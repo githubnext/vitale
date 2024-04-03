@@ -1,10 +1,15 @@
 import * as vscode from "vscode";
 import WebSocket from "ws";
-import type { WebSocketHandlers, WebSocketEvents } from "@vitale/server";
+import type {
+  CellOutput,
+  ClientFunctions,
+  ServerFunctions,
+} from "@vitale/server";
 import { type ChildProcess, spawn } from "node:child_process";
 import JSON5 from "json5";
 import { type BirpcReturn } from "birpc";
 import { createBirpc } from "birpc";
+import kill from "tree-kill";
 
 function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   return new vscode.NotebookCellOutput(
@@ -15,7 +20,7 @@ function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   );
 }
 
-type Client = BirpcReturn<WebSocketHandlers, WebSocketEvents>;
+type Client = BirpcReturn<ServerFunctions, ClientFunctions>;
 
 export class NotebookController {
   readonly id = "vitale-notebook-kernel";
@@ -27,6 +32,7 @@ export class NotebookController {
     "javascript",
   ];
 
+  private _disposed = false;
   private _executionOrder = 0;
   private readonly _controller: vscode.NotebookController;
   private _process: undefined | ChildProcess;
@@ -49,6 +55,12 @@ export class NotebookController {
     this.connectClient();
   }
 
+  restartKernel() {
+    if (this._process && this._process.pid) {
+      kill(this._process.pid);
+    }
+  }
+
   startProcess() {
     this._process = spawn("node_modules/.bin/vitale", { cwd: this._cwd });
     this._process.stdout?.on("data", (data) => {
@@ -59,7 +71,9 @@ export class NotebookController {
     });
     this._process.on("close", () => {
       this._process = undefined;
-      this.startProcess();
+      if (!this._disposed) {
+        this.startProcess();
+      }
     });
     this._process.on("error", (code) => {
       console.log(`failed to start process ${code}`);
@@ -84,8 +98,11 @@ export class NotebookController {
       ws.on("open", () => {
         console.log(`ws open`);
         tries = RECONNECT_TRIES;
-        const client = createBirpc<WebSocketHandlers, WebSocketEvents>(
-          {},
+        const client = createBirpc<ServerFunctions, ClientFunctions>(
+          {
+            startCellExecution: this.startCellExecution.bind(this),
+            endCellExecution: this.endCellExecution.bind(this),
+          },
           {
             post: (msg) => ws.send(msg),
             on: (fn) => ws.on("message", fn),
@@ -124,7 +141,10 @@ export class NotebookController {
   }
 
   dispose(): void {
-    this._process?.kill();
+    this._disposed = true;
+    if (this._process && this._process.pid) {
+      kill(this._process.pid);
+    }
     this._controller.dispose();
   }
 
@@ -172,14 +192,12 @@ export class NotebookController {
     cell: vscode.NotebookCell
   ): Promise<void> {
     const client = await this.getClient();
-    const pong = await client.ping();
-    console.log(pong);
 
-    // client.executeCell(
-    //   path,
-    //   cell.metadata.id,
-    //   cell.document.languageId,
-    //   cell.document.getText()
-    // );
+    client.executeCell(
+      path,
+      cell.metadata.id,
+      cell.document.languageId,
+      cell.document.getText()
+    );
   }
 }

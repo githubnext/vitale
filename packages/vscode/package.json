@@ -9,15 +9,13 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onNotebook:vitale"
-  ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "title": "Hello World",
-        "command": "vitale.helloWorld",
+        "title": "Restart Kernel",
+        "command": "vitale.restartKernel",
         "category": "Vitale"
       }
     ],
@@ -71,6 +69,7 @@
     "nanoid": "^5.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tree-kill": "^1.2.2",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3",
     "ws": "^8.16.0"
