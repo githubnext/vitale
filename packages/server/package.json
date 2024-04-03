@@ -1,11 +1,11 @@
 {
-  "name": "server",
-  "version": "1.0.0",
+  "name": "@vitale/server",
+  "version": "0.0.1",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "types": "src/types.ts",
   "scripts": {
-    "watch": "tsup src/cli.ts --watch",
+    "watch": "tsup --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
@@ -15,9 +15,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "vite": "^5.2.6"
+    "birpc": "^0.2.17",
+    "get-port": "^7.1.0",
+    "json5": "^2.2.3",
+    "vite": "^5.2.6",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
+    "@types/ws": "^8.5.10",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3"
   }

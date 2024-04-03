@@ -1,5 +1,5 @@
 {
-  "name": "vscode",
+  "name": "@vitale/vscode",
   "displayName": "Vitale",
   "description": "",
   "version": "0.0.1",
@@ -9,13 +9,37 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
-  "main": "./out/extension.js",
+  "activationEvents": [
+    "onNotebook:vitale"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
+        "title": "Hello World",
         "command": "vitale.helloWorld",
-        "title": "Hello World"
+        "category": "Vitale"
+      }
+    ],
+    "notebooks": [
+      {
+        "type": "vitale-notebook",
+        "displayName": "Vitale Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.vnb"
+          }
+        ]
+      }
+    ],
+    "notebookRenderer": [
+      {
+        "id": "json-renderer",
+        "displayName": "JSON Renderer",
+        "entrypoint": "./dist/jsonRenderer.mjs",
+        "mimeTypes": [
+          "application/json"
+        ]
       }
     ]
   },
@@ -30,13 +54,25 @@
   "devDependencies": {
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/react": "^18.2.73",
+    "@types/react-dom": "^18.2.23",
     "@types/vscode": "^1.87.0",
+    "@types/vscode-notebook-renderer": "^1.72.3",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
+    "@uiw/react-json-view": "2.0.0-alpha.21",
+    "@vitale/server": "workspace:../server",
     "@vscode/test-cli": "^0.0.8",
     "@vscode/test-electron": "^2.3.9",
+    "birpc": "^0.2.17",
     "eslint": "^8.57.0",
+    "json5": "^2.2.3",
+    "nanoid": "^5.0.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "tsup": "^8.0.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "ws": "^8.16.0"
   }
 }

@@ -7,16 +7,16 @@ export default defineConfig([
     external: ["vscode"],
     format: "cjs",
   },
-  // {
-  //   clean: true,
-  //   entry: ["./src/notebook/objectRenderer.tsx"],
-  //   external: ["vscode"],
-  //   format: ["esm"],
-  //   splitting: false,
-  //   esbuildOptions(options) {
-  //     options.define = {
-  //       "process.env.NODE_ENV": JSON.stringify("production"),
-  //     };
-  //   },
-  // },
+  {
+    clean: true,
+    entry: ["./src/jsonRenderer.tsx"],
+    external: ["vscode"],
+    format: ["esm"],
+    splitting: false,
+    esbuildOptions(options) {
+      options.define = {
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      };
+    },
+  },
 ]);
