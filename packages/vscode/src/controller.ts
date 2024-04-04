@@ -62,7 +62,13 @@ export class NotebookController {
   }
 
   startProcess() {
-    this._process = spawn("node_modules/.bin/vitale", { cwd: this._cwd });
+    this._process = spawn("node_modules/.bin/vitale", {
+      cwd: this._cwd,
+      // env: {
+      //   ...process.env,
+      //   DEBUG: "vite:*",
+      // },
+    });
     this._process.stdout?.on("data", (data) => {
       console.log(data.toString());
     });
@@ -157,6 +163,9 @@ export class NotebookController {
           .find((cell) => cell.metadata.id === id);
         if (cell) {
           const execution = this._controller.createNotebookCellExecution(cell);
+          execution.token.onCancellationRequested(() => {
+            this.cancelCellExecution(path, id);
+          });
 
           execution.executionOrder = ++this._executionOrder;
           execution.start(Date.now());
@@ -164,6 +173,16 @@ export class NotebookController {
           this._executions.set(`${path}-${id}`, execution);
         }
       });
+  }
+
+  private cancelCellExecution(path: string, id: string) {
+    // TODO(jaked) notify server to cancel execution
+    const key = `${path}-${id}`;
+    const execution = this._executions.get(key);
+    if (execution) {
+      execution.end(true, Date.now());
+      this._executions.delete(key);
+    }
   }
 
   private endCellExecution(path: string, id: string, cellOutput: CellOutput) {

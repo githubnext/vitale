@@ -6,7 +6,7 @@ import { createBirpc, type BirpcReturn } from "birpc";
 import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
 import JSON5 from "json5";
 import * as Path from "node:path";
-import * as Fs from "node:fs";
+import * as Fs from "node:fs/promises";
 import type { ParserOptions } from "@babel/parser";
 import * as babelParser from "@babel/parser";
 import * as babelTypes from "@babel/types";
@@ -18,20 +18,6 @@ const clients = new Map<
 >();
 
 const server = await createViteServer();
-
-const wss = new WebSocketServer({ noServer: true });
-
-server.httpServer?.on("upgrade", (request, socket, head) => {
-  if (!request.url) return;
-  const { pathname } = new URL(request.url, "http://localhost");
-  if (pathname !== "/__vitale_api__") return;
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit("connection", ws, request);
-    setupClient(ws);
-  });
-});
-
-server.listen();
 
 const runtime = new ViteRuntime(
   {
@@ -121,7 +107,7 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
 
 async function executeCell(id: string, path: string, cellId: string) {
   clients.forEach(async (client) => {
-    await client.startCellExecution(path, cellId);
+    client.startCellExecution(path, cellId);
   });
   let data;
   let mime;
@@ -167,7 +153,7 @@ async function executeCell(id: string, path: string, cellId: string) {
         : [{ data: [...Buffer.from(data, "utf8").values()], mime }],
   };
   clients.forEach(async (client) => {
-    await client.endCellExecution(path, cellId, cellOutput);
+    client.endCellExecution(path, cellId, cellOutput);
   });
 }
 
@@ -179,12 +165,12 @@ function invalidateModule(id: string) {
   const match = cellRegex.exec(parsedPath.name);
   if (match) {
     const [_, name, cellId] = match;
-    const path = Path.join(parsedPath.dir, `${name}.tsnb`);
+    const path = Path.join(parsedPath.dir, `${name}.vnb`);
     executeCell(id, path, cellId);
   }
 
   for (const dep of mod.importers ?? []) {
-    invalidateModule(dep);
+    invalidateModule(Path.join(server.config.root, dep));
   }
 }
 
@@ -196,7 +182,6 @@ function setupClient(ws: WebSocket) {
         return "pong";
       },
       executeCell(path, cellId, language, code) {
-        console.log("executeCell", { path, cellId, language, code });
         const ext = (() => {
           switch (language) {
             case "typescriptreact":
@@ -216,11 +201,7 @@ function setupClient(ws: WebSocket) {
           parsedPath.dir,
           `.${parsedPath.name}-${cellId}.${ext}`
         );
-        console.log(cellPath);
-        const rewrittenCode = rewriteCode(code, language);
-        console.log(rewrittenCode);
-        Fs.writeFile(cellPath, rewriteCode(code, language), "utf-8", () => {});
-        invalidateModule(cellPath);
+        Fs.writeFile(cellPath, rewriteCode(code, language), "utf-8");
       },
     },
     {
@@ -236,3 +217,29 @@ function setupClient(ws: WebSocket) {
     clients.delete(ws);
   });
 }
+
+async function start() {
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.httpServer?.on("upgrade", (request, socket, head) => {
+    if (!request.url) return;
+    const { pathname } = new URL(request.url, "http://localhost");
+    if (pathname !== "/__vitale_api__") return;
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+      setupClient(ws);
+    });
+  });
+
+  server.watcher.on("change", (id) => {
+    invalidateModule(id);
+  });
+
+  server.watcher.on("add", (id) => {
+    invalidateModule(id);
+  });
+
+  server.listen();
+}
+
+start();
