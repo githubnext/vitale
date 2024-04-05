@@ -1,0 +1,37 @@
+name: Build and upload VSIX
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "packages/vscode/*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Package VSIX
+        working-directory: packages/vscode
+        run: pnpm run package
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: packages/vscode/*.vsix
