@@ -4,8 +4,14 @@
   "description": "",
   "license": "MIT",
   "type": "module",
-  "types": "src/types.ts",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/cli.js",
+    "dist/index.js",
+    "dist/index.d.ts"
+  ],
   "scripts": {
+    "build": "tsup",
     "watch": "tsup --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -48,10 +48,10 @@
   },
   "scripts": {
     "package": "vsce package --no-dependencies",
-    "vscode:prepublish": "pnpm run compile",
-    "compile": "tsup",
+    "vscode:prepublish": "pnpm run build",
+    "build": "tsup",
     "watch": "tsup --watch",
-    "pretest": "pnpm run compile && pnpm run lint",
+    "pretest": "pnpm run build && pnpm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test"
   },

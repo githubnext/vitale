@@ -1,6 +1,10 @@
 import * as vscode from "vscode";
 import WebSocket from "ws";
-import type { CellOutput, ClientFunctions, ServerFunctions } from "vitale";
+import type {
+  CellOutput,
+  ClientFunctions,
+  ServerFunctions,
+} from "@githubnext/vitale";
 import { type ChildProcess, spawn } from "node:child_process";
 import JSON5 from "json5";
 import { type BirpcReturn } from "birpc";
