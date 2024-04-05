@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "packages/vscode/*"
+  workflow_dispatch:
 
 jobs:
   build:
