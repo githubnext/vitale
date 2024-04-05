@@ -48,6 +48,9 @@ importers:
 
   packages/vscode:
     devDependencies:
+      '@githubnext/vitale':
+        specifier: workspace:../server
+        version: link:../server
       '@types/mocha':
         specifier: ^10.0.6
         version: 10.0.6
@@ -114,9 +117,6 @@ importers:
       typescript:
         specifier: ^5.3.3
         version: 5.4.3
-      vitale:
-        specifier: workspace:../server
-        version: link:../server
       ws:
         specifier: ^8.16.0
         version: 8.16.0

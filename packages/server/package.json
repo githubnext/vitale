@@ -1,7 +1,8 @@
 {
-  "name": "vitale",
+  "name": "@githubnext/vitale",
   "version": "0.0.1",
   "description": "",
+  "license": "MIT",
   "type": "module",
   "types": "src/types.ts",
   "scripts": {
@@ -13,7 +14,6 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
   "dependencies": {
     "@babel/generator": "^7.24.4",
     "@babel/parser": "^7.24.4",
