@@ -17,7 +17,7 @@ const clients = new Map<
   BirpcReturn<ClientFunctions, ServerFunctions>
 >();
 
-const server = await createViteServer();
+const server = await createViteServer({ server: { host: "127.0.0.1" } });
 
 const runtime = new ViteRuntime(
   {
