@@ -1,5 +1,5 @@
 {
-  "name": "@vitale/vscode",
+  "name": "vitale-vscode",
   "displayName": "Vitale",
   "description": "",
   "version": "0.0.1",
@@ -9,6 +9,10 @@
   "categories": [
     "Other"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/githubnext/vitale.git"
+  },
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
@@ -42,8 +46,9 @@
     ]
   },
   "scripts": {
+    "package": "vsce package --no-dependencies",
     "vscode:prepublish": "pnpm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsup",
     "watch": "tsup --watch",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ext ts",
@@ -60,9 +65,9 @@
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
     "@uiw/react-json-view": "2.0.0-alpha.21",
-    "@vitale/server": "workspace:../server",
     "@vscode/test-cli": "^0.0.8",
     "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^2.24.0",
     "birpc": "^0.2.17",
     "eslint": "^8.57.0",
     "json5": "^2.2.3",
@@ -72,6 +77,7 @@
     "tree-kill": "^1.2.2",
     "tsup": "^8.0.2",
     "typescript": "^5.3.3",
+    "vitale": "workspace:../server",
     "ws": "^8.16.0"
   }
 }

@@ -6,7 +6,7 @@ and hot-reloading.
 ## Installation
 
 - ~~install the `.vsix`~~
-- ~~install the `@vitale/server` package in your project~~
+- ~~install the `vitale` package in your project~~
 
 Currently there's no `.vsix`; you can run the extension from source:
 
@@ -14,7 +14,7 @@ Currently there's no `.vsix`; you can run the extension from source:
 - `cd vitale; pnpm install; pnpm -r run watch`
 - open the project in VS Code, press `F5` to run
 
-Currently `@vitale/server` is not published; you can install it by linking to a
+Currently `vitale` is not published; you can install it by linking to a
 clone of this repo:
 
 - `git clone https://github.com/githubnext/vitale.git`

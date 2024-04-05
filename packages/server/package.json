@@ -1,5 +1,5 @@
 {
-  "name": "@vitale/server",
+  "name": "vitale",
   "version": "0.0.1",
   "description": "",
   "type": "module",
