@@ -51,8 +51,7 @@ export class NotebookController {
     this._controller.supportsExecutionOrder = true;
     this._controller.executeHandler = this._executeAll.bind(this);
 
-    this.startProcess();
-    this.connectClient();
+    this.startProcess().then(() => this.connectClient());
   }
 
   restartKernel() {
@@ -62,6 +61,11 @@ export class NotebookController {
   }
 
   startProcess() {
+    let resolveSpawnPromise: () => void;
+    const spawnPromise = new Promise<void>((resolve) => {
+      resolveSpawnPromise = resolve;
+    });
+
     this._process = spawn("node_modules/.bin/vitale", {
       cwd: this._cwd,
       // env: {
@@ -75,15 +79,25 @@ export class NotebookController {
     this._process.stderr?.on("data", (data) => {
       console.error(data.toString());
     });
-    this._process.on("close", () => {
+    this._process.on("spawn", () => {
+      console.log(`vitale process spawned`);
+      resolveSpawnPromise();
+    });
+    this._process.on("exit", () => {
+      console.log(`vitale process exited`);
       this._process = undefined;
       if (!this._disposed) {
         this.startProcess();
       }
     });
     this._process.on("error", (code) => {
+      vscode.window.showErrorMessage(
+        `Couldn't start Vitale; is @githubnext/vitale installed?`
+      );
       console.log(`failed to start process ${code}`);
     });
+
+    return spawnPromise;
   }
 
   connectClient(): Promise<Client> {
