@@ -51,7 +51,10 @@ export class NotebookController {
     this._controller.supportsExecutionOrder = true;
     this._controller.executeHandler = this._executeAll.bind(this);
 
-    this.startProcess().then(() => this.connectClient());
+    this.startProcess().then(
+      () => this.connectClient(),
+      (error) => console.error(error)
+    );
   }
 
   restartKernel() {
@@ -62,8 +65,10 @@ export class NotebookController {
 
   startProcess() {
     let resolveSpawnPromise: () => void;
-    const spawnPromise = new Promise<void>((resolve) => {
+    let rejectSpawnPromise: (err: Error) => void;
+    const spawnPromise = new Promise<void>((resolve, reject) => {
       resolveSpawnPromise = resolve;
+      rejectSpawnPromise = reject;
     });
 
     this._process = spawn("node_modules/.bin/vitale", {
@@ -87,14 +92,15 @@ export class NotebookController {
       console.log(`vitale process exited`);
       this._process = undefined;
       if (!this._disposed) {
-        this.startProcess();
+        this.startProcess().catch((error) => console.error(error));
       }
     });
-    this._process.on("error", (code) => {
+    this._process.on("error", (error) => {
+      this._process = undefined;
+      rejectSpawnPromise(error);
       vscode.window.showErrorMessage(
-        `Couldn't start Vitale; is @githubnext/vitale installed?`
+        `Couldn't start Vitale server; is @githubnext/vitale installed?`
       );
-      console.log(`failed to start process ${code}`);
     });
 
     return spawnPromise;
@@ -144,6 +150,8 @@ export class NotebookController {
         if (tries > 0) {
           tries -= 1;
           setTimeout(connect, RECONNECT_INTERVAL);
+        } else {
+          vscode.window.showErrorMessage(`Couldn't connect to Vitale server`);
         }
       });
     };
@@ -155,8 +163,10 @@ export class NotebookController {
   getClient(): Promise<Client> {
     if (this._client) {
       return Promise.resolve(this._client);
-    } else {
+    } else if (this._process) {
       return this.connectClient();
+    } else {
+      return this.startProcess().then(() => this.connectClient());
     }
   }
 
@@ -224,13 +234,17 @@ export class NotebookController {
     path: string,
     cell: vscode.NotebookCell
   ): Promise<void> {
-    const client = await this.getClient();
+    try {
+      const client = await this.getClient();
 
-    client.executeCell(
-      path,
-      cell.metadata.id,
-      cell.document.languageId,
-      cell.document.getText()
-    );
+      client.executeCell(
+        path,
+        cell.metadata.id,
+        cell.document.languageId,
+        cell.document.getText()
+      );
+    } catch (e) {
+      console.error(e);
+    }
   }
 }
