@@ -6,7 +6,6 @@ import { createBirpc, type BirpcReturn } from "birpc";
 import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
 import JSON5 from "json5";
 import * as Path from "node:path";
-import * as Fs from "node:fs/promises";
 import type { ParserOptions } from "@babel/parser";
 import * as babelParser from "@babel/parser";
 import * as babelTypes from "@babel/types";
@@ -17,7 +16,29 @@ const clients = new Map<
   BirpcReturn<ClientFunctions, ServerFunctions>
 >();
 
-const server = await createViteServer({ server: { host: "127.0.0.1" } });
+const cellIdRegex = /^([^?]+\.vnb)\?cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
+
+const cells = new Map<string, string>();
+
+const server = await createViteServer({
+  server: { host: "127.0.0.1" },
+  plugins: [
+    {
+      name: "vitale",
+      resolveId(source) {
+        if (cells.has(source)) return source;
+        else return null;
+      },
+      load(id) {
+        if (cells.has(id)) {
+          return cells.get(id);
+        } else {
+          return null;
+        }
+      },
+    },
+  ],
+});
 
 const runtime = new ViteRuntime(
   {
@@ -75,8 +96,6 @@ function rewriteCode(code: string, language: string) {
   }
   return new babelGenerator.CodeGenerator(program).generate().code;
 }
-
-const cellRegex = /^\.(.+)-([a-zA-z0-9_-]{21})$/;
 
 interface PossibleSVG {
   outerHTML: string;
@@ -161,11 +180,9 @@ function invalidateModule(id: string) {
   const mod = runtime.moduleCache.get(id);
   runtime.moduleCache.delete(id);
 
-  const parsedPath = Path.parse(id);
-  const match = cellRegex.exec(parsedPath.name);
+  const match = cellIdRegex.exec(id);
   if (match) {
-    const [_, name, cellId] = match;
-    const path = Path.join(parsedPath.dir, `${name}.vnb`);
+    const [_, path, cellId] = match;
     executeCell(id, path, cellId);
   }
 
@@ -196,12 +213,9 @@ function setupClient(ws: WebSocket) {
               throw new Error(`unknown language "${language}"`);
           }
         })();
-        const parsedPath = Path.parse(path);
-        const cellPath = Path.join(
-          parsedPath.dir,
-          `.${parsedPath.name}-${cellId}.${ext}`
-        );
-        Fs.writeFile(cellPath, rewriteCode(code, language), "utf-8");
+        const id = `${path}?cellId=${cellId}.${ext}`;
+        cells.set(id, rewriteCode(code, language));
+        invalidateModule(id);
       },
     },
     {

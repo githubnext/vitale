@@ -49,8 +49,6 @@ To restart the server, run `Vitale: Restart Kernel` from the command palette.
 
 ## Known issues
 
-- cell contents are written to the project tree with auto-generated filenames
-  when you run a cell (you can delete them)
 - the server process is not cleaned up when the extension is deactivated (I'm not sure when this happens actually)
 - cancelling an execution only cancels it client-side; if you get your server stuck you can restart it with `Vitale: Restart Kernel`
 - each cell is its own module; you can't reference variables defined in other cells
