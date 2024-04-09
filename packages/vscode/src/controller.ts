@@ -22,6 +22,19 @@ function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
 
 type Client = BirpcReturn<ServerFunctions, ClientFunctions>;
 
+type State =
+  | "idle"
+  | "starting"
+  | "start-failed"
+  | "started"
+  | "connecting"
+  | "connect-failed"
+  | "connected"
+  | "disposed";
+
+const RECONNECT_TRIES = 10;
+const RECONNECT_INTERVAL = 1000;
+
 export class NotebookController {
   readonly id = "vitale-notebook-kernel";
   public readonly label = "Vitale Notebook Kernel";
@@ -32,11 +45,18 @@ export class NotebookController {
     "javascript",
   ];
 
-  private _disposed = false;
   private _executionOrder = 0;
   private readonly _controller: vscode.NotebookController;
+
+  private _state: State = "idle";
+  private _tries: number = RECONNECT_TRIES;
   private _process: undefined | ChildProcess;
+  private _websocket: undefined | WebSocket;
   private _client: undefined | Client;
+  private _clientWaiters: {
+    resolve: (client: Client) => void;
+    reject: (error: Error) => void;
+  }[] = [];
 
   private _executions = new Map<string, vscode.NotebookCellExecution>();
 
@@ -51,10 +71,144 @@ export class NotebookController {
     this._controller.supportsExecutionOrder = true;
     this._controller.executeHandler = this._executeAll.bind(this);
 
-    this.startProcess().then(
-      () => this.connectClient(),
-      (error) => console.error(error)
+    this.run("idle");
+  }
+
+  private resolve(client: Client) {
+    this._clientWaiters.forEach((waiter) => waiter.resolve(client));
+    this._clientWaiters = [];
+  }
+
+  private reject(error: Error) {
+    this._clientWaiters.forEach((waiter) => waiter.reject(error));
+    this._clientWaiters = [];
+  }
+
+  private start() {
+    const process = spawn("node_modules/.bin/vitale", {
+      cwd: this._cwd,
+      // env: {
+      //   ...process.env,
+      //   DEBUG: "vite:*",
+      // },
+    });
+    process.stdout?.on("data", (data) => {
+      console.log(data.toString());
+    });
+    process.stderr?.on("data", (data) => {
+      console.error(data.toString());
+    });
+    process.on("spawn", () => {
+      console.log(`vitale process spawned`);
+      this._process = process;
+      this.run("started");
+    });
+    process.on("exit", () => {
+      console.log(`vitale process exited`);
+      this.run("idle");
+    });
+    process.on("error", (error) => {
+      this.reject(error);
+      this.run("start-failed");
+    });
+  }
+
+  private makeClient(ws: WebSocket) {
+    return createBirpc<ServerFunctions, ClientFunctions>(
+      {
+        startCellExecution: this.startCellExecution.bind(this),
+        endCellExecution: this.endCellExecution.bind(this),
+      },
+      {
+        post: (msg) => ws.send(msg),
+        on: (fn) => ws.on("message", fn),
+        serialize: JSON5.stringify,
+        deserialize: JSON5.parse,
+      }
     );
+  }
+
+  private connect() {
+    const url = `ws://localhost:5173/__vitale_api__`;
+    const ws = new WebSocket(url);
+
+    ws.on("open", () => {
+      if (this._websocket && this._websocket !== ws) {
+        ws.close();
+        return;
+      }
+      console.log(`ws open`);
+      this._websocket = ws;
+      this.run("connected");
+    });
+
+    ws.on("error", (err) => {
+      if (this._websocket && this._websocket !== ws) {
+        return;
+      }
+      console.log(`ws error`);
+      console.error(err);
+    });
+
+    ws.on("close", () => {
+      if (this._websocket && this._websocket !== ws) {
+        return;
+      }
+      console.log(`ws close`);
+      setTimeout(() => {
+        if (this._state === "connecting" || this._state === "connected") {
+          this.run("started");
+        }
+      }, RECONNECT_INTERVAL);
+    });
+  }
+
+  run(state: State) {
+    if (this._state === "disposed") {
+      this.reject(new Error("disposed"));
+      return;
+    }
+    this._state = state;
+
+    switch (state) {
+      case "idle":
+        this._process = undefined;
+        this._state = "starting";
+        this.start();
+        break;
+
+      case "start-failed":
+        this.reject(new Error(`Couldn't start Vitale server`));
+        vscode.window.showErrorMessage(
+          `Couldn't start Vitale server; is @githubnext/vitale installed?`
+        );
+        break;
+
+      case "started":
+        this._websocket = undefined;
+        if (this._tries > 0) {
+          this._tries -= 1;
+          this._state = "connecting";
+          this.connect();
+        } else {
+          this.run("connect-failed");
+        }
+        break;
+
+      case "connect-failed":
+        this.reject(new Error(`Couldn't connect to Vitale server`));
+        vscode.window.showErrorMessage(`Couldn't connect to Vitale server`);
+        break;
+
+      case "connected":
+        this._tries = RECONNECT_TRIES;
+        this._client = this.makeClient(this._websocket!);
+        this.resolve(this._client);
+        break;
+
+      default:
+        throw new Error(`unexpected state: ${state}`);
+    }
   }
 
   restartKernel() {
@@ -63,115 +217,40 @@ export class NotebookController {
     }
   }
 
-  startProcess() {
-    let resolveSpawnPromise: () => void;
-    let rejectSpawnPromise: (err: Error) => void;
-    const spawnPromise = new Promise<void>((resolve, reject) => {
-      resolveSpawnPromise = resolve;
-      rejectSpawnPromise = reject;
+  private makeClientPromise() {
+    return new Promise<Client>((resolve, reject) => {
+      this._clientWaiters.push({ resolve, reject });
     });
+  }
 
-    this._process = spawn("node_modules/.bin/vitale", {
-      cwd: this._cwd,
-      // env: {
-      //   ...process.env,
-      //   DEBUG: "vite:*",
-      // },
-    });
-    this._process.stdout?.on("data", (data) => {
-      console.log(data.toString());
-    });
-    this._process.stderr?.on("data", (data) => {
-      console.error(data.toString());
-    });
-    this._process.on("spawn", () => {
-      console.log(`vitale process spawned`);
-      resolveSpawnPromise();
-    });
-    this._process.on("exit", () => {
-      console.log(`vitale process exited`);
-      this._process = undefined;
-      if (!this._disposed) {
-        this.startProcess().catch((error) => console.error(error));
+  private getClient(): Promise<Client> {
+    switch (this._state) {
+      case "connected":
+        return Promise.resolve(this._client!);
+
+      case "disposed":
+        return Promise.reject(new Error("disposed"));
+
+      case "start-failed": {
+        const p = this.makeClientPromise();
+        this.run("idle");
+        return p;
       }
-    });
-    this._process.on("error", (error) => {
-      this._process = undefined;
-      rejectSpawnPromise(error);
-      vscode.window.showErrorMessage(
-        `Couldn't start Vitale server; is @githubnext/vitale installed?`
-      );
-    });
 
-    return spawnPromise;
-  }
+      case "connect-failed": {
+        const p = this.makeClientPromise();
+        this.run("started");
+        return p;
+      }
 
-  connectClient(): Promise<Client> {
-    let resolveClientPromise: (client: Client) => void;
-    const clientPromise = new Promise<Client>((resolve) => {
-      resolveClientPromise = resolve;
-    });
-
-    const RECONNECT_TRIES = 10;
-    const RECONNECT_INTERVAL = 1000;
-
-    let tries = RECONNECT_TRIES;
-
-    const connect = () => {
-      const url = `ws://localhost:5173/__vitale_api__`;
-      const ws = new WebSocket(url);
-
-      ws.on("open", () => {
-        console.log(`ws open`);
-        tries = RECONNECT_TRIES;
-        const client = createBirpc<ServerFunctions, ClientFunctions>(
-          {
-            startCellExecution: this.startCellExecution.bind(this),
-            endCellExecution: this.endCellExecution.bind(this),
-          },
-          {
-            post: (msg) => ws.send(msg),
-            on: (fn) => ws.on("message", fn),
-            serialize: JSON5.stringify,
-            deserialize: JSON5.parse,
-          }
-        );
-        this._client = client;
-        resolveClientPromise(client);
-      });
-
-      ws.on("error", (err) => {
-        console.error(err);
-      });
-
-      ws.on("close", () => {
-        console.log(`ws close`);
-        this._client = undefined;
-        if (tries > 0) {
-          tries -= 1;
-          setTimeout(connect, RECONNECT_INTERVAL);
-        } else {
-          vscode.window.showErrorMessage(`Couldn't connect to Vitale server`);
-        }
-      });
-    };
-    connect();
-
-    return clientPromise;
-  }
-
-  getClient(): Promise<Client> {
-    if (this._client) {
-      return Promise.resolve(this._client);
-    } else if (this._process) {
-      return this.connectClient();
-    } else {
-      return this.startProcess().then(() => this.connectClient());
+      default: {
+        return this.makeClientPromise();
+      }
     }
   }
 
   dispose(): void {
-    this._disposed = true;
+    this._state = "disposed";
     if (this._process && this._process.pid) {
       kill(this._process.pid);
     }
