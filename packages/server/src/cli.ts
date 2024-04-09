@@ -26,15 +26,10 @@ const server = await createViteServer({
     {
       name: "vitale",
       resolveId(source) {
-        if (cells.has(source)) return source;
-        else return null;
+        return cells.has(source) ? source : null;
       },
       load(id) {
-        if (cells.has(id)) {
-          return cells.get(id);
-        } else {
-          return null;
-        }
+        return cells.has(id) ? cells.get(id) : null;
       },
     },
   ],
@@ -215,6 +210,10 @@ function setupClient(ws: WebSocket) {
         })();
         const id = `${path}?cellId=${cellId}.${ext}`;
         cells.set(id, rewriteCode(code, language));
+
+        const mod = server.moduleGraph.getModuleById(id);
+        if (mod) server.moduleGraph.invalidateModule(mod);
+
         invalidateModule(id);
       },
     },
