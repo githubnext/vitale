@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "packages/vscode/*"
+      - "packages/vscode/**"
   workflow_dispatch:
 
 jobs:
