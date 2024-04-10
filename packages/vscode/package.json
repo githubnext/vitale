@@ -2,7 +2,7 @@
   "name": "vitale-vscode",
   "displayName": "Vitale",
   "description": "",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "engines": {
     "vscode": "^1.87.0"
@@ -42,6 +42,14 @@
         "entrypoint": "./dist/jsonRenderer.mjs",
         "mimeTypes": [
           "application/json"
+        ]
+      },
+      {
+        "id": "vitale-renderer",
+        "displayName": "Vitale Renderer",
+        "entrypoint": "./dist/vitaleRenderer.mjs",
+        "mimeTypes": [
+          "application/x-vitale"
         ]
       }
     ]
