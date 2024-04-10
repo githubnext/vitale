@@ -5,21 +5,36 @@ and hot-reloading.
 
 ## Installation
 
-- ~~install the `.vsix`~~
-- ~~install the `vitale` package in your project~~
+1.  Install the `.vsix` from the latest build:
 
-Currently there's no `.vsix`; you can run the extension from source:
+    - go to https://github.com/githubnext/vitale/actions/workflows/vsix.yml
+    - click on the latest run
+    - scroll to the bottom and download the `vscode-extension` artifact
+    - unpack `vscode-extension.zip`
+    - run `code --install-extension vitale-vscode-0.0.1.vsix` (or run
+      `Extensions: Install from VSIX...` from the command palette)
+
+2.  Install the `@githubnext/vitale` package in your project:
+
+    - `pnpm add -D @githubnext/vitale` (or equivalent in `npm` or `yarn` etc.)
+
+## Development
+
+To develop Vitale:
 
 - `git clone https://github.com/githubnext/vitale.git`
 - `cd vitale; pnpm install; pnpm -r run watch`
 - open the project in VS Code, press `F5` to run
 
-Currently `vitale` is not published; you can install it by linking to a
-clone of this repo:
+The server needs to be installed in whatever project you're testing with. You
+can install the published server as above, or to link to the development
+version:
 
-- `git clone https://github.com/githubnext/vitale.git`
-- `cd vitale; pnpm install; pnpm -r run watch`
 - `cd packages/server; pnpm link --dir $YOURPROJECT`
+
+The linked development server is automatically rebuilt but not hot-reloaded; you
+can get the latest changed by restarting the server (run `Vitale: Restart
+Kernel` from the command palette).
 
 ## Getting started
 
@@ -49,6 +64,5 @@ To restart the server, run `Vitale: Restart Kernel` from the command palette.
 
 ## Known issues
 
-- the server process is not cleaned up when the extension is deactivated (I'm not sure when this happens actually)
 - cancelling an execution only cancels it client-side; if you get your server stuck you can restart it with `Vitale: Restart Kernel`
 - each cell is its own module; you can't reference variables defined in other cells
