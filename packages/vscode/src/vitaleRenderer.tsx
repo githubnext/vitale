@@ -31,6 +31,9 @@ window.__vite_plugin_react_preamble_installed__ = true;
 
 document.getElementsByTagName("base")[0].href = "http://localhost:5173/";
 
+// without this delay, sometimes the output cell height is set to 0
+await new Promise((resolve) => setTimeout(resolve, 50));
+
 import("http://localhost:5173/${id}&t=${Date.now()}");
 `;
     element.appendChild(script);
