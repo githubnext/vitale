@@ -209,6 +209,8 @@ export class NotebookController {
       default:
         throw new Error(`unexpected state: ${state}`);
     }
+
+    console.log(`state: ${state}`);
   }
 
   restartKernel() {
@@ -233,12 +235,14 @@ export class NotebookController {
 
       case "start-failed": {
         const p = this.makeClientPromise();
+        this._tries = RECONNECT_TRIES;
         this.run("idle");
         return p;
       }
 
       case "connect-failed": {
         const p = this.makeClientPromise();
+        this._tries = RECONNECT_TRIES;
         this.run("started");
         return p;
       }
@@ -257,41 +261,45 @@ export class NotebookController {
     this._controller.dispose();
   }
 
-  private startCellExecution(path: string, id: string) {
-    vscode.workspace
-      .openNotebookDocument(vscode.Uri.file(path))
-      .then((document) => {
-        const cell = document
-          .getCells()
-          .find((cell) => cell.metadata.id === id);
-        if (cell) {
-          const execution = this._controller.createNotebookCellExecution(cell);
-          execution.token.onCancellationRequested(() => {
-            this.cancelCellExecution(path, id);
-          });
-
-          execution.executionOrder = ++this._executionOrder;
-          execution.start(Date.now());
-
-          this._executions.set(`${path}-${id}`, execution);
-        }
+  private async startCellExecution(path: string, id: string) {
+    console.log(`client startCellExecution`, path, id);
+    const document = await vscode.workspace.openNotebookDocument(
+      vscode.Uri.file(path)
+    );
+    const cell = document.getCells().find((cell) => cell.metadata.id === id);
+    if (cell) {
+      const execution = this._controller.createNotebookCellExecution(cell);
+      execution.token.onCancellationRequested(() => {
+        this.cancelCellExecution(path, id);
       });
+
+      execution.executionOrder = ++this._executionOrder;
+      execution.start(Date.now());
+
+      const key = `${path}-${id}`;
+      console.log(`started execution ${key}`);
+      this._executions.set(key, execution);
+    }
   }
 
   private cancelCellExecution(path: string, id: string) {
+    console.log(`client cancelCellExecution`, path, id);
     // TODO(jaked) notify server to cancel execution
     const key = `${path}-${id}`;
     const execution = this._executions.get(key);
     if (execution) {
+      console.log(`canceled execution ${key}`);
       execution.end(true, Date.now());
       this._executions.delete(key);
     }
   }
 
   private endCellExecution(path: string, id: string, cellOutput: CellOutput) {
+    console.log(`client endCellExecution`, path, id, cellOutput);
     const key = `${path}-${id}`;
     const execution = this._executions.get(key);
     if (execution) {
+      console.log(`ended execution ${key}`);
       const notebookCellOutput = cellOutputToNotebookCellOutput(cellOutput);
       execution.replaceOutput(notebookCellOutput);
       execution.end(true, Date.now());

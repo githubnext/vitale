@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createServer as createViteServer } from "vite";
+import { createServer as createViteServer, send } from "vite";
 import { ESModulesRunner, ViteRuntime } from "vite/runtime";
 import { type WebSocket, WebSocketServer } from "ws";
 import { createBirpc, type BirpcReturn } from "birpc";
@@ -10,6 +10,7 @@ import type { ParserOptions } from "@babel/parser";
 import * as babelParser from "@babel/parser";
 import * as babelTypes from "@babel/types";
 import * as babelGenerator from "@babel/generator";
+import corsMiddleware from "cors";
 
 const clients = new Map<
   WebSocket,
@@ -18,7 +19,18 @@ const clients = new Map<
 
 const cellIdRegex = /^([^?]+\.vnb)\?cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
 
-const cells = new Map<string, string>();
+const trailingSeparatorRE = /[?&]$/;
+const timestampRE = /\bt=\d{13}&?\b/;
+export function removeTimestampQuery(url: string): string {
+  return url.replace(timestampRE, "").replace(trailingSeparatorRE, "");
+}
+
+type SourceDescription = {
+  code: string;
+  ast: babelTypes.Program;
+};
+
+const cells = new Map<string, SourceDescription>();
 
 const server = await createViteServer({
   server: { host: "127.0.0.1" },
@@ -29,7 +41,31 @@ const server = await createViteServer({
         return cells.has(source) ? source : null;
       },
       load(id) {
-        return cells.has(id) ? cells.get(id) : null;
+        return cells.has(id) ? cells.get(id)!.code : null;
+      },
+
+      configureServer(server) {
+        server.middlewares.use(corsMiddleware({}));
+
+        // this is the core of `transformMiddleware` from vite
+        // we must reimplement it in order to serve `.vnb?cellId` paths
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url) {
+            const url = removeTimestampQuery(req.url);
+            if (cellIdRegex.test(url)) {
+              const result = await server.transformRequest(url);
+              if (result) {
+                return send(req, res, result.code, "js", {
+                  etag: result.etag,
+                  cacheControl: "no-cache",
+                  headers: server.config.server.headers,
+                  map: result.map,
+                });
+              }
+            }
+          }
+          next();
+        });
       },
     },
   ],
@@ -43,7 +79,7 @@ const runtime = new ViteRuntime(
   new ESModulesRunner()
 );
 
-function rewriteCode(code: string, language: string) {
+function rewriteCode(code: string, language: string): SourceDescription {
   const plugins = ((): ParserOptions["plugins"] => {
     switch (language) {
       case "typescriptreact":
@@ -78,6 +114,7 @@ function rewriteCode(code: string, language: string) {
         babelTypes.exportDefaultDeclaration(babelTypes.buildUndefinedNode()),
       ]);
     } else {
+      program = ast.program;
       const body = ast.program.body;
       const last = body[body.length - 1];
       if (last.type === "ExpressionStatement") {
@@ -86,10 +123,10 @@ function rewriteCode(code: string, language: string) {
         );
         body[body.length - 1] = defaultExport;
       }
-      program = babelTypes.program(body);
     }
   }
-  return new babelGenerator.CodeGenerator(program).generate().code;
+  const generatorResult = new babelGenerator.CodeGenerator(program).generate();
+  return { ast: program, code: generatorResult.code };
 }
 
 interface PossibleSVG {
@@ -120,55 +157,79 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
 }
 
 async function executeCell(id: string, path: string, cellId: string) {
-  clients.forEach(async (client) => {
-    client.startCellExecution(path, cellId);
-  });
+  // TODO(jaked)
+
+  // await so client finishes startCellExecution before we send endCellExecution
+  // would be better for client to lock around startCellExecution
+  await Promise.all(
+    Array.from(clients.values()).map((client) =>
+      client.startCellExecution(path, cellId)
+    )
+  );
+
   let data;
   let mime;
-  try {
-    let { default: result } = await runtime.executeUrl(id);
-    if (result instanceof Promise) result = await result;
-    if (
-      typeof result === "object" &&
-      "data" in result &&
-      typeof result.data === "string" &&
-      "mime" in result &&
-      typeof result.mime === "string"
-    ) {
-      mime = result.mime;
-      data = result.data;
-    } else if (isSVGElementLike(result)) {
-      mime = "image/svg+xml";
-      data = result.outerHTML;
-    } else if (isHTMLElementLike(result)) {
-      mime = "text/html";
-      data = result.outerHTML;
-    } else if (typeof result === "object") {
-      mime = "application/json";
-      data = JSON.stringify(result);
-    } else {
-      mime = "text/x-javascript";
-      data = JSON.stringify(result);
-    }
-  } catch (e) {
-    const err = e as Error;
-    const obj = {
-      name: err.name,
-      message: err.message,
-      stack: err.stack,
-    };
-    data = JSON.stringify(obj, undefined, "\t");
-    mime = "application/vnd.code.notebook.error";
+
+  // client execution
+  if (cells.get(id)?.ast.directives[0]?.value.value === "use client") {
+    data = JSON.stringify({
+      // TODO(jaked) strip workspace root when executeCell is called
+      id: id.substring(server.config.root.length + 1),
+    });
+    mime = "application/x-vitale";
   }
+
+  // server execution
+  else {
+    try {
+      let { default: result } = await runtime.executeUrl(id);
+      if (result instanceof Promise) result = await result;
+      if (
+        typeof result === "object" &&
+        "data" in result &&
+        typeof result.data === "string" &&
+        "mime" in result &&
+        typeof result.mime === "string"
+      ) {
+        mime = result.mime;
+        data = result.data;
+      } else if (isSVGElementLike(result)) {
+        mime = "image/svg+xml";
+        data = result.outerHTML;
+      } else if (isHTMLElementLike(result)) {
+        mime = "text/html";
+        data = result.outerHTML;
+      } else if (typeof result === "object") {
+        mime = "application/json";
+        data = JSON.stringify(result);
+      } else {
+        mime = "text/x-javascript";
+        data = JSON.stringify(result);
+      }
+    } catch (e) {
+      const err = e as Error;
+      const obj = {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+      };
+      data = JSON.stringify(obj, undefined, "\t");
+      mime = "application/vnd.code.notebook.error";
+    }
+  }
+
   const cellOutput: CellOutput = {
     items:
       data === undefined
         ? []
         : [{ data: [...Buffer.from(data, "utf8").values()], mime }],
   };
-  clients.forEach(async (client) => {
-    client.endCellExecution(path, cellId, cellOutput);
-  });
+
+  return await Promise.all(
+    Array.from(clients.values()).map((client) =>
+      client.endCellExecution(path, cellId, cellOutput)
+    )
+  );
 }
 
 function invalidateModule(id: string) {

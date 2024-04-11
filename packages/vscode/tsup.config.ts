@@ -17,4 +17,15 @@ export default defineConfig([
       };
     },
   },
+  {
+    entry: ["./src/vitaleRenderer.tsx"],
+    external: ["vscode"],
+    format: ["esm"],
+    splitting: false,
+    esbuildOptions(options) {
+      options.define = {
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      };
+    },
+  },
 ]);
