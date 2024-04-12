@@ -34,7 +34,11 @@ type SourceDescription = {
 const cells = new Map<string, SourceDescription>();
 
 const server = await createViteServer({
-  server: { host: "127.0.0.1", strictPort: true },
+  server: {
+    host: "127.0.0.1",
+    strictPort: true,
+    origin: "http://127.0.0.1:5173",
+  },
   plugins: [
     {
       name: "vitale",

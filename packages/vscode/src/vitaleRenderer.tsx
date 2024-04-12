@@ -35,13 +35,10 @@ export const activate: ActivationFunction = (_context) => ({
     script.appendChild(
       document.createTextNode(`
 import RefreshRuntime from "http://localhost:5173/@react-refresh";
-
 RefreshRuntime.injectIntoGlobalHook(window);
 window.$RefreshReg$ = () => {};
 window.$RefreshSig$ = () => (type) => type;
 window.__vite_plugin_react_preamble_installed__ = true;
-
-document.getElementsByTagName("base")[0].href = "http://localhost:5173/";
 
 await new Promise((resolve) => setTimeout(resolve, 50));
 
