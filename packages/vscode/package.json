@@ -51,14 +51,6 @@
         "mimeTypes": [
           "application/x-vitale"
         ]
-      },
-      {
-        "id": "vitale-react-renderer",
-        "displayName": "Vitale React Renderer",
-        "entrypoint": "./dist/vitaleReactRenderer.mjs",
-        "mimeTypes": [
-          "application/x-vitale-react"
-        ]
       }
     ]
   },

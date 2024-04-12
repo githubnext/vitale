@@ -28,7 +28,7 @@ export function removeTimestampQuery(url: string): string {
 type SourceDescription = {
   code: string;
   ast: babelTypes.Program;
-  type: "server" | "client" | "react";
+  type: "server" | "client";
 };
 
 const cells = new Map<string, SourceDescription>();
@@ -80,8 +80,33 @@ const runtime = new ViteRuntime(
   new ESModulesRunner()
 );
 
-function rewriteCode(code: string, language: string): SourceDescription {
-  let type: "server" | "client" | "react" = "server";
+const reactImports = babelParser.parse(
+  `
+import React from "react";
+import ReactDOM from "react-dom/client";
+`,
+  { sourceType: "module" }
+).program.body;
+
+const reactRender = babelParser.parse(
+  `
+ReactDOM.createRoot(
+  document.getElementById(\`cell-output-root-\${__vitale_cell_id__}\`)
+).render(
+  <React.StrictMode>
+    {__vitale_jsx_expression__}
+  </React.StrictMode>
+);
+`,
+  { sourceType: "module", plugins: ["jsx"] }
+).program.body;
+
+function rewriteCode(
+  code: string,
+  language: string,
+  cellId: string
+): SourceDescription {
+  let type: "server" | "client" = "server";
 
   const plugins = ((): ParserOptions["plugins"] => {
     switch (language) {
@@ -101,41 +126,80 @@ function rewriteCode(code: string, language: string): SourceDescription {
 
   let program: babelTypes.Program;
 
-  let exprAst: undefined | babelTypes.Expression;
-  try {
-    exprAst = babelParser.parseExpression(code, parserOptions);
-  } catch {}
-
-  if (exprAst) {
-    program = babelTypes.program([
-      babelTypes.exportDefaultDeclaration(exprAst),
-    ]);
-    if (exprAst.type === "JSXElement") {
-      type = "react";
+  const exprAst = (() => {
+    try {
+      return babelParser.parseExpression(code, parserOptions);
+    } catch {
+      return undefined;
     }
+  })();
+  if (exprAst) {
+    program = babelTypes.program([babelTypes.expressionStatement(exprAst)]);
   } else {
     const ast = babelParser.parse(code, parserOptions);
     if (ast.program.body.length === 0) {
       program = babelTypes.program([
-        babelTypes.exportDefaultDeclaration(babelTypes.buildUndefinedNode()),
+        babelTypes.expressionStatement(babelTypes.buildUndefinedNode()),
       ]);
     } else {
       program = ast.program;
-      const body = ast.program.body;
-      const last = body[body.length - 1];
-      if (program.directives[0]?.value.value === "use client") {
-        type = "client";
-      } else if (last.type === "ExpressionStatement") {
-        const defaultExport = babelTypes.exportDefaultDeclaration(
-          last.expression
-        );
-        body[body.length - 1] = defaultExport;
-        if (last.expression.type === "JSXElement") {
-          type = "react";
-        }
-      }
     }
   }
+
+  // "use client" directive, executed the cell verbatim on the client
+  if (program.directives[0]?.value.value === "use client") {
+    type = "client";
+  }
+
+  // no "use client" directive, check for JSX
+  else {
+    const body = program.body;
+    const last = body[body.length - 1];
+
+    if (last.type === "ExpressionStatement") {
+      // cell ends in a JSX expression, generate code to render the component
+      if (
+        last.expression.type === "JSXElement" ||
+        last.expression.type === "JSXFragment"
+      ) {
+        type = "client";
+        body.unshift(...reactImports);
+        body.pop();
+        body.push(
+          babelTypes.variableDeclaration("const", [
+            babelTypes.variableDeclarator(
+              babelTypes.identifier("__vitale_jsx_expression__"),
+              last.expression
+            ),
+          ])
+        );
+        body.push(
+          babelTypes.variableDeclaration("const", [
+            babelTypes.variableDeclarator(
+              babelTypes.identifier("__vitale_cell_id__"),
+              babelTypes.stringLiteral(cellId)
+            ),
+          ])
+        );
+        body.push(...reactRender);
+      }
+
+      // cell ends in a non-JSX expresion, make it the default export
+      else {
+        body[body.length - 1] = babelTypes.exportDefaultDeclaration(
+          last.expression
+        );
+      }
+    }
+
+    // cell ends in a non-expression, generate a dummy default export
+    else {
+      body.push(
+        babelTypes.exportDefaultDeclaration(babelTypes.buildUndefinedNode())
+      );
+    }
+  }
+
   const generatorResult = new babelGenerator.CodeGenerator(program).generate();
   return { ast: program, code: generatorResult.code, type };
 }
@@ -169,7 +233,6 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
 
 async function executeCell(id: string, path: string, cellId: string) {
   // TODO(jaked)
-
   // await so client finishes startCellExecution before we send endCellExecution
   // would be better for client to lock around startCellExecution
   await Promise.all(
@@ -188,12 +251,6 @@ async function executeCell(id: string, path: string, cellId: string) {
       id: id.substring(server.config.root.length + 1),
     });
     mime = "application/x-vitale";
-  } else if (cells.get(id)?.type === "react") {
-    data = JSON.stringify({
-      // TODO(jaked) strip workspace root when executeCell is called
-      id: id.substring(server.config.root.length + 1),
-    });
-    mime = "application/x-vitale-react";
   }
 
   // server execution
@@ -287,7 +344,7 @@ function setupClient(ws: WebSocket) {
           }
         })();
         const id = `${path}?cellId=${cellId}.${ext}`;
-        cells.set(id, rewriteCode(code, language));
+        cells.set(id, rewriteCode(code, language, cellId));
 
         const mod = server.moduleGraph.getModuleById(id);
         if (mod) server.moduleGraph.invalidateModule(mod);
