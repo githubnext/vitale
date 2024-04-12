@@ -91,7 +91,7 @@ import ReactDOM from "react-dom/client";
 const reactRender = babelParser.parse(
   `
 ReactDOM.createRoot(
-  document.getElementById(\`cell-output-root-\${__vitale_cell_id__}\`)
+  document.getElementById(__vitale_cell_output_root_id__)
 ).render(
   <React.StrictMode>
     {__vitale_jsx_expression__}
@@ -100,6 +100,15 @@ ReactDOM.createRoot(
 `,
   { sourceType: "module", plugins: ["jsx"] }
 ).program.body;
+
+function makeCellOutputRootIdDecl(cellId: string) {
+  return babelTypes.variableDeclaration("const", [
+    babelTypes.variableDeclarator(
+      babelTypes.identifier("__vitale_cell_output_root_id__"),
+      babelTypes.stringLiteral(`cell-output-root-${cellId}`)
+    ),
+  ]);
+}
 
 function rewriteCode(
   code: string,
@@ -148,6 +157,7 @@ function rewriteCode(
 
   // "use client" directive, executed the cell verbatim on the client
   if (program.directives[0]?.value.value === "use client") {
+    program.body.unshift(makeCellOutputRootIdDecl(cellId));
     type = "client";
   }
 
@@ -173,14 +183,7 @@ function rewriteCode(
             ),
           ])
         );
-        body.push(
-          babelTypes.variableDeclaration("const", [
-            babelTypes.variableDeclarator(
-              babelTypes.identifier("__vitale_cell_id__"),
-              babelTypes.stringLiteral(cellId)
-            ),
-          ])
-        );
+        body.push(makeCellOutputRootIdDecl(cellId));
         body.push(...reactRender);
       }
 

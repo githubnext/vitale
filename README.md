@@ -62,7 +62,43 @@ can install others as extensions.
 
 To restart the server, run `Vitale: Restart Kernel` from the command palette.
 
+## Rendering React components
+
+To render a React component, write it as the last expression in a cell, like
+
+```tsx
+const Component = () => <div>Hello, world!</div>;
+
+<Component />;
+```
+
+You can also import a component from another file, and editing an imported component will trigger a hot reload of the rendered output.
+
+## Client-side rendering
+
+To render a cell client-side, add `"use client"` at the top of the cell. A
+variable `__vitale_cell_output_root_id__` is defined to be the ID of a DOM
+element for the cell's output.
+
+```ts
+"use client";
+
+document.getElementById(__vitale_cell_output_root_id__).innerText =
+  "Hello, world!";
+```
+
+This should work to render components in non-React frameworks, but
+framework-specific hot-reloading won't work yet (there is special support in the
+custom renderer for React hot-reloading).
+
 ## Known issues
 
-- cancelling an execution only cancels it client-side; if you get your server stuck you can restart it with `Vitale: Restart Kernel`
-- each cell is its own module; you can't reference variables defined in other cells
+- cancelling an execution only cancels it client-side; if you get your server
+  stuck you can restart it with `Vitale: Restart Kernel`
+- each cell is its own module; you can't reference variables defined in other
+  cells, and you need to repeat imports in each cell
+- rerunning a React cell doesn't hot reload; the component is remounted and
+  loses its state
+- rendered output of client-side cells gets cleared when you save the notebook
+  or restart the server, and after that rendering is broken; you can recover by
+  closing and reopening the notebook
