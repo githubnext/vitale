@@ -28,4 +28,15 @@ export default defineConfig([
       };
     },
   },
+  {
+    entry: ["./src/vitaleReactRenderer.tsx"],
+    external: ["vscode"],
+    format: ["esm"],
+    splitting: false,
+    esbuildOptions(options) {
+      options.define = {
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      };
+    },
+  },
 ]);

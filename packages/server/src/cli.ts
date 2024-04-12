@@ -28,12 +28,13 @@ export function removeTimestampQuery(url: string): string {
 type SourceDescription = {
   code: string;
   ast: babelTypes.Program;
+  type: "server" | "client" | "react";
 };
 
 const cells = new Map<string, SourceDescription>();
 
 const server = await createViteServer({
-  server: { host: "127.0.0.1" },
+  server: { host: "127.0.0.1", strictPort: true },
   plugins: [
     {
       name: "vitale",
@@ -80,6 +81,8 @@ const runtime = new ViteRuntime(
 );
 
 function rewriteCode(code: string, language: string): SourceDescription {
+  let type: "server" | "client" | "react" = "server";
+
   const plugins = ((): ParserOptions["plugins"] => {
     switch (language) {
       case "typescriptreact":
@@ -107,6 +110,9 @@ function rewriteCode(code: string, language: string): SourceDescription {
     program = babelTypes.program([
       babelTypes.exportDefaultDeclaration(exprAst),
     ]);
+    if (exprAst.type === "JSXElement") {
+      type = "react";
+    }
   } else {
     const ast = babelParser.parse(code, parserOptions);
     if (ast.program.body.length === 0) {
@@ -117,16 +123,21 @@ function rewriteCode(code: string, language: string): SourceDescription {
       program = ast.program;
       const body = ast.program.body;
       const last = body[body.length - 1];
-      if (last.type === "ExpressionStatement") {
+      if (program.directives[0]?.value.value === "use client") {
+        type = "client";
+      } else if (last.type === "ExpressionStatement") {
         const defaultExport = babelTypes.exportDefaultDeclaration(
           last.expression
         );
         body[body.length - 1] = defaultExport;
+        if (last.expression.type === "JSXElement") {
+          type = "react";
+        }
       }
     }
   }
   const generatorResult = new babelGenerator.CodeGenerator(program).generate();
-  return { ast: program, code: generatorResult.code };
+  return { ast: program, code: generatorResult.code, type };
 }
 
 interface PossibleSVG {
@@ -171,12 +182,18 @@ async function executeCell(id: string, path: string, cellId: string) {
   let mime;
 
   // client execution
-  if (cells.get(id)?.ast.directives[0]?.value.value === "use client") {
+  if (cells.get(id)?.type === "client") {
     data = JSON.stringify({
       // TODO(jaked) strip workspace root when executeCell is called
       id: id.substring(server.config.root.length + 1),
     });
     mime = "application/x-vitale";
+  } else if (cells.get(id)?.type === "react") {
+    data = JSON.stringify({
+      // TODO(jaked) strip workspace root when executeCell is called
+      id: id.substring(server.config.root.length + 1),
+    });
+    mime = "application/x-vitale-react";
   }
 
   // server execution
