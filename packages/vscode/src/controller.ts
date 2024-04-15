@@ -10,6 +10,7 @@ import JSON5 from "json5";
 import { type BirpcReturn } from "birpc";
 import { createBirpc } from "birpc";
 import kill from "tree-kill";
+import getPort from "get-port";
 
 function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   return new vscode.NotebookCellOutput(
@@ -50,6 +51,7 @@ export class NotebookController {
 
   private _state: State = "idle";
   private _tries: number = RECONNECT_TRIES;
+  private _port: undefined | number;
   private _process: undefined | ChildProcess;
   private _websocket: undefined | WebSocket;
   private _client: undefined | Client;
@@ -84,14 +86,19 @@ export class NotebookController {
     this._clientWaiters = [];
   }
 
-  private start() {
-    const process = spawn("node_modules/.bin/vitale", {
-      cwd: this._cwd,
-      // env: {
-      //   ...process.env,
-      //   DEBUG: "vite:*",
-      // },
-    });
+  private async start() {
+    const port = await getPort({ port: 51205 });
+    const process = spawn(
+      "node_modules/.bin/vitale",
+      ["--port", String(port)],
+      {
+        cwd: this._cwd,
+        // env: {
+        //   ...process.env,
+        //   DEBUG: "vite:*",
+        // },
+      }
+    );
     process.stdout?.on("data", (data) => {
       console.log(data.toString());
     });
@@ -101,6 +108,7 @@ export class NotebookController {
     process.on("spawn", () => {
       console.log(`vitale process spawned`);
       this._process = process;
+      this._port = port;
       this.run("started");
     });
     process.on("exit", () => {
@@ -129,7 +137,7 @@ export class NotebookController {
   }
 
   private connect() {
-    const url = `ws://localhost:5173/__vitale_api__`;
+    const url = `ws://localhost:${this._port}/__vitale_api__`;
     const ws = new WebSocket(url);
 
     ws.on("open", () => {

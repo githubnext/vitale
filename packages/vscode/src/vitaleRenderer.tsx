@@ -7,7 +7,7 @@ export const activate: ActivationFunction = (_context) => ({
   async renderOutputItem(outputItem, element) {
     element.replaceChildren();
 
-    const { id } = outputItem.json();
+    const { id, origin } = outputItem.json();
     const match = cellIdRegex.exec(id);
     if (!match) {
       element.textContent = "Error: invalid cellId";
@@ -34,7 +34,7 @@ export const activate: ActivationFunction = (_context) => ({
     //    (there is probably a better way to fix this)
     script.appendChild(
       document.createTextNode(`
-import RefreshRuntime from "http://localhost:5173/@react-refresh";
+import RefreshRuntime from "${origin}/@react-refresh";
 RefreshRuntime.injectIntoGlobalHook(window);
 window.$RefreshReg$ = () => {};
 window.$RefreshSig$ = () => (type) => type;
@@ -42,7 +42,7 @@ window.__vite_plugin_react_preamble_installed__ = true;
 
 await new Promise((resolve) => setTimeout(resolve, 50));
 
-import("http://localhost:5173/${id}&t=${Date.now()}");
+import("${origin}/${id}&t=${Date.now()}");
 `)
     );
     element.appendChild(script);
