@@ -21,9 +21,19 @@
       {
         "title": "Restart Kernel",
         "command": "vitale.restartKernel",
-        "category": "Vitale"
+        "category": "Vitale",
+        "icon": "$(refresh)"
       }
     ],
+    "menus": {
+      "notebook/toolbar": [
+        {
+          "command": "vitale.restartKernel",
+          "group": "navigation",
+          "when": "notebookType == 'vitale-notebook'"
+        }
+      ]
+    },
     "notebooks": [
       {
         "type": "vitale-notebook",
