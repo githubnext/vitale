@@ -21,6 +21,11 @@ function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   );
 }
 
+function getRerunCellsWhenDirty(uri: vscode.Uri) {
+  const config = vscode.workspace.getConfiguration("vitale", uri);
+  return config.get("rerunCellsWhenDirty", true);
+}
+
 type Client = BirpcReturn<ServerFunctions, ClientFunctions>;
 
 type State =
@@ -76,12 +81,12 @@ export class NotebookController {
     this.run("idle");
   }
 
-  private resolve(client: Client) {
+  private resolveClient(client: Client) {
     this._clientWaiters.forEach((waiter) => waiter.resolve(client));
     this._clientWaiters = [];
   }
 
-  private reject(error: Error) {
+  private rejectClient(error: Error) {
     this._clientWaiters.forEach((waiter) => waiter.reject(error));
     this._clientWaiters = [];
   }
@@ -116,7 +121,7 @@ export class NotebookController {
       this.run("idle");
     });
     process.on("error", (error) => {
-      this.reject(error);
+      this.rejectClient(error);
       this.run("start-failed");
     });
   }
@@ -124,6 +129,7 @@ export class NotebookController {
   private makeClient(ws: WebSocket) {
     return createBirpc<ServerFunctions, ClientFunctions>(
       {
+        dirtyCell: this.dirtyCell.bind(this),
         startCellExecution: this.startCellExecution.bind(this),
         endCellExecution: this.endCellExecution.bind(this),
       },
@@ -173,7 +179,7 @@ export class NotebookController {
 
   run(state: State) {
     if (this._state === "disposed") {
-      this.reject(new Error("disposed"));
+      this.rejectClient(new Error("disposed"));
       return;
     }
     this._state = state;
@@ -186,7 +192,7 @@ export class NotebookController {
         break;
 
       case "start-failed":
-        this.reject(new Error(`Couldn't start Vitale server`));
+        this.rejectClient(new Error(`Couldn't start Vitale server`));
         vscode.window.showErrorMessage(
           `Couldn't start Vitale server; is @githubnext/vitale installed?`
         );
@@ -204,14 +210,14 @@ export class NotebookController {
         break;
 
       case "connect-failed":
-        this.reject(new Error(`Couldn't connect to Vitale server`));
+        this.rejectClient(new Error(`Couldn't connect to Vitale server`));
         vscode.window.showErrorMessage(`Couldn't connect to Vitale server`);
         break;
 
       case "connected":
         this._tries = RECONNECT_TRIES;
         this._client = this.makeClient(this._websocket!);
-        this.resolve(this._client);
+        this.resolveClient(this._client);
         break;
 
       default:
@@ -222,9 +228,19 @@ export class NotebookController {
   }
 
   restartKernel() {
+    // TODO(jaked)
+    // should clear outputs and dirty all cells
     if (this._process && this._process.pid) {
       kill(this._process.pid);
     }
+  }
+
+  async runDirty(notebookUri: string) {
+    const notebook = await vscode.workspace.openNotebookDocument(
+      vscode.Uri.parse(notebookUri)
+    );
+    const cells = notebook.getCells().filter((cell) => cell.metadata.dirty);
+    this._executeAll(cells, notebook);
   }
 
   private makeClientPromise() {
@@ -269,12 +285,33 @@ export class NotebookController {
     this._controller.dispose();
   }
 
+  private setCellDirty(cell: vscode.NotebookCell, dirty: boolean) {
+    const metadata = { ...(cell.metadata ?? {}), dirty };
+    const edit = new vscode.WorkspaceEdit();
+    edit.set(cell.notebook.uri, [
+      vscode.NotebookEdit.updateCellMetadata(cell.index, metadata),
+    ]);
+    vscode.workspace.applyEdit(edit);
+  }
+
+  private async dirtyCell(path: string, id: string) {
+    const uri = vscode.Uri.file(path);
+    const notebook = await vscode.workspace.openNotebookDocument(uri);
+    const cell = notebook.getCells().find((cell) => cell.metadata.id === id);
+    if (cell) {
+      this.setCellDirty(cell, true);
+      if (getRerunCellsWhenDirty(uri)) {
+        this._executeAll([cell], notebook);
+      }
+    }
+  }
+
   private async startCellExecution(path: string, id: string) {
     console.log(`client startCellExecution`, path, id);
-    const document = await vscode.workspace.openNotebookDocument(
+    const notebook = await vscode.workspace.openNotebookDocument(
       vscode.Uri.file(path)
     );
-    const cell = document.getCells().find((cell) => cell.metadata.id === id);
+    const cell = notebook.getCells().find((cell) => cell.metadata.id === id);
     if (cell) {
       const execution = this._controller.createNotebookCellExecution(cell);
       execution.token.onCancellationRequested(() => {
@@ -312,16 +349,17 @@ export class NotebookController {
       execution.replaceOutput(notebookCellOutput);
       execution.end(true, Date.now());
       this._executions.delete(key);
+
+      this.setCellDirty(execution.cell, false);
     }
   }
 
   private _executeAll(
     cells: vscode.NotebookCell[],
-    _notebook: vscode.NotebookDocument,
-    _controller: vscode.NotebookController
+    notebook: vscode.NotebookDocument
   ): void {
     for (const cell of cells) {
-      this._doExecution(_notebook.uri.fsPath, cell);
+      this._doExecution(notebook.uri.fsPath, cell);
     }
   }
 

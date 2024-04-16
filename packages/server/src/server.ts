@@ -46,6 +46,21 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
 
 const cellIdRegex = /^([^?]+\.vnb)\?cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
 
+function extOfLanguage(language: string): string {
+  switch (language) {
+    case "typescriptreact":
+      return "tsx";
+    case "typescript":
+      return "ts";
+    case "javascriptreact":
+      return "jsx";
+    case "javascript":
+      return "js";
+    default:
+      throw new Error(`unknown language "${language}"`);
+  }
+}
+
 class VitaleDevServer {
   static async construct(options: Options) {
     const cells: Map<string, SourceDescription> = new Map();
@@ -216,14 +231,18 @@ class VitaleDevServer {
     );
   }
 
-  private invalidateModule(id: string) {
+  private invalidateModule(id: string, dirty: boolean = true) {
     const mod = this.viteRuntime.moduleCache.get(id);
     this.viteRuntime.moduleCache.delete(id);
 
-    const match = cellIdRegex.exec(id);
-    if (match) {
-      const [_, path, cellId] = match;
-      this.executeCell(id, path, cellId);
+    if (dirty) {
+      const match = cellIdRegex.exec(id);
+      if (match) {
+        const [_, path, cellId] = match;
+        Array.from(this.clients.values()).forEach((client) =>
+          client.dirtyCell(path, cellId)
+        );
+      }
     }
 
     for (const dep of mod.importers ?? []) {
@@ -237,27 +256,16 @@ class VitaleDevServer {
     language: string,
     code: string
   ) {
-    const ext = (() => {
-      switch (language) {
-        case "typescriptreact":
-          return "tsx";
-        case "typescript":
-          return "ts";
-        case "javascriptreact":
-          return "jsx";
-        case "javascript":
-          return "js";
-        default:
-          throw new Error(`unknown language "${language}"`);
-      }
-    })();
+    const ext = extOfLanguage(language);
     const id = `${path}?cellId=${cellId}.${ext}`;
     this.cells.set(id, rewrite(code, language, cellId));
 
     const mod = this.viteServer.moduleGraph.getModuleById(id);
     if (mod) this.viteServer.moduleGraph.invalidateModule(mod);
 
-    this.invalidateModule(id);
+    this.invalidateModule(id, false);
+
+    this.executeCell(id, path, cellId);
   }
 
   private setupClient(ws: WebSocket) {

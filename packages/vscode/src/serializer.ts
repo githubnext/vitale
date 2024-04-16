@@ -3,6 +3,7 @@ import JSON5 from "json5";
 
 interface NotebookCellMetadata {
   id: string;
+  dirty: boolean;
 }
 
 interface NotebookCell {
@@ -42,7 +43,7 @@ export class NotebookSerializer implements vscode.NotebookSerializer {
         item.value,
         item.language
       );
-      cellData.metadata = item.metadata;
+      cellData.metadata = { ...item.metadata, dirty: true };
       return cellData;
     });
 

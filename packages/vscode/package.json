@@ -2,7 +2,7 @@
   "name": "vitale-vscode",
   "displayName": "Vitale",
   "description": "",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "license": "MIT",
   "engines": {
     "vscode": "^1.87.0"
@@ -23,12 +23,23 @@
         "command": "vitale.restartKernel",
         "category": "Vitale",
         "icon": "$(refresh)"
+      },
+      {
+        "title": "Run Dirty",
+        "command": "vitale.runDirty",
+        "category": "Vitale",
+        "icon": "$(run-all)"
       }
     ],
     "menus": {
       "notebook/toolbar": [
         {
           "command": "vitale.restartKernel",
+          "group": "navigation",
+          "when": "notebookType == 'vitale-notebook'"
+        },
+        {
+          "command": "vitale.runDirty",
           "group": "navigation",
           "when": "notebookType == 'vitale-notebook'"
         }
@@ -62,7 +73,18 @@
           "application/x-vitale"
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Vitale",
+      "properties": {
+        "vitale.rerunCellsWhenDirty": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically re-run cells when their dependencies change",
+          "scope": "resource"
+        }
+      }
+    }
   },
   "scripts": {
     "package": "vsce package --no-dependencies",

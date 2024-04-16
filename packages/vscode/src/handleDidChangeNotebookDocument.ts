@@ -13,7 +13,6 @@ function uniqueId(doc: NotebookDocument): string {
 export function handleDidChangeNotebookDocument(
   e: NotebookDocumentChangeEvent
 ) {
-  const edit = new WorkspaceEdit();
   const edits: NotebookEdit[] = [];
   for (const contentChange of e.contentChanges) {
     for (const cell of contentChange.addedCells) {
@@ -23,6 +22,7 @@ export function handleDidChangeNotebookDocument(
     }
   }
   if (edits.length > 0) {
+    const edit = new WorkspaceEdit();
     edit.set(e.notebook.uri, edits);
     workspace.applyEdit(edit);
   }

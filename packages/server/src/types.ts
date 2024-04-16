@@ -21,6 +21,7 @@ export type ServerFunctions = {
 };
 
 export type ClientFunctions = {
+  dirtyCell: (path: string, cellId: string) => void;
   startCellExecution: (path: string, cellId: string) => void;
   endCellExecution: (
     path: string,
