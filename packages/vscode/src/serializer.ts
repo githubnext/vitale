@@ -43,7 +43,7 @@ export class NotebookSerializer implements vscode.NotebookSerializer {
         item.value,
         item.language
       );
-      cellData.metadata = { ...item.metadata, dirty: true };
+      cellData.metadata = item.metadata;
       return cellData;
     });
 
@@ -57,6 +57,9 @@ export class NotebookSerializer implements vscode.NotebookSerializer {
     const contents: NotebookData = { cells: [] };
 
     for (const cell of data.cells) {
+      if (cell.metadata) {
+        delete cell.metadata.dirty;
+      }
       contents.cells.push({
         kind: cell.kind,
         language: cell.languageId,

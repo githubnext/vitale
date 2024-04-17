@@ -147,11 +147,11 @@ class VitaleDevServer {
     });
 
     viteServer.watcher.on("change", (id) => {
-      this.invalidateModule(id);
+      this.invalidateModuleAndDirty(id);
     });
 
     viteServer.watcher.on("add", (id) => {
-      this.invalidateModule(id);
+      this.invalidateModuleAndDirty(id);
     });
   }
 
@@ -231,41 +231,79 @@ class VitaleDevServer {
     );
   }
 
-  private invalidateModule(id: string, dirty: boolean = true) {
+  private invalidateModule(
+    id: string,
+    dirtyCells: { path: string; cellId: string }[]
+  ) {
     const mod = this.viteRuntime.moduleCache.get(id);
     this.viteRuntime.moduleCache.delete(id);
 
-    if (dirty) {
-      const match = cellIdRegex.exec(id);
-      if (match) {
-        const [_, path, cellId] = match;
-        Array.from(this.clients.values()).forEach((client) =>
-          client.dirtyCell(path, cellId)
-        );
+    const match = cellIdRegex.exec(id);
+    if (match) {
+      const [_, path, cellId] = match;
+      if (
+        !dirtyCells.some((cell) => cell.path === path && cell.cellId === cellId)
+      ) {
+        dirtyCells.push({ path, cellId });
       }
     }
 
     for (const dep of mod.importers ?? []) {
-      this.invalidateModule(Path.join(this.viteServer.config.root, dep));
+      this.invalidateModule(
+        Path.join(this.viteServer.config.root, dep),
+        dirtyCells
+      );
     }
   }
 
-  private executeCellRPC(
-    path: string,
-    cellId: string,
-    language: string,
-    code: string
+  private markCellsDirty(cells: { path: string; cellId: string }[]) {
+    for (const client of this.clients.values()) {
+      client.markCellsDirty(cells);
+    }
+  }
+
+  private invalidateModuleAndDirty(id: string) {
+    const cells: { path: string; cellId: string }[] = [];
+    this.invalidateModule(id, cells);
+    this.markCellsDirty(cells);
+  }
+
+  private executeCellsRPC(
+    cells: {
+      path: string;
+      cellId: string;
+      language: string;
+      code: string;
+    }[]
   ) {
-    const ext = extOfLanguage(language);
-    const id = `${path}?cellId=${cellId}.${ext}`;
-    this.cells.set(id, rewrite(code, language, cellId));
+    let dirtyCells: { path: string; cellId: string }[] = [];
 
-    const mod = this.viteServer.moduleGraph.getModuleById(id);
-    if (mod) this.viteServer.moduleGraph.invalidateModule(mod);
+    for (const { path, cellId, language, code } of cells) {
+      const ext = extOfLanguage(language);
+      const id = `${path}?cellId=${cellId}.${ext}`;
+      this.cells.set(id, rewrite(code, language, cellId));
 
-    this.invalidateModule(id, false);
+      const mod = this.viteServer.moduleGraph.getModuleById(id);
+      if (mod) this.viteServer.moduleGraph.invalidateModule(mod);
 
-    this.executeCell(id, path, cellId);
+      this.invalidateModule(id, dirtyCells);
+    }
+
+    for (const { path, cellId, language } of cells) {
+      const ext = extOfLanguage(language);
+      const id = `${path}?cellId=${cellId}.${ext}`;
+      this.executeCell(id, path, cellId);
+    }
+
+    // don't mark cells dirty if they were just executed
+    dirtyCells = dirtyCells.filter(
+      (dirtyCell) =>
+        !cells.some(
+          (cell) =>
+            cell.path === dirtyCell.path && cell.cellId === dirtyCell.cellId
+        )
+    );
+    this.markCellsDirty(dirtyCells);
   }
 
   private setupClient(ws: WebSocket) {
@@ -276,8 +314,8 @@ class VitaleDevServer {
           console.log("ping");
           return "pong";
         },
-        executeCell(path, cellId, language, code) {
-          return self.executeCellRPC(path, cellId, language, code);
+        executeCells(cells) {
+          return self.executeCellsRPC(cells);
         },
       },
       {

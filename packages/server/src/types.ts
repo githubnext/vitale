@@ -12,16 +12,18 @@ export interface CellOutput {
 export type ServerFunctions = {
   ping: () => Promise<"pong">;
 
-  executeCell: (
-    path: string,
-    id: string,
-    language: string,
-    code: string
+  executeCells: (
+    cells: {
+      path: string;
+      cellId: string;
+      language: string;
+      code: string;
+    }[]
   ) => void;
 };
 
 export type ClientFunctions = {
-  dirtyCell: (path: string, cellId: string) => void;
+  markCellsDirty: (cells: { path: string; cellId: string }[]) => void;
   startCellExecution: (path: string, cellId: string) => void;
   endCellExecution: (
     path: string,

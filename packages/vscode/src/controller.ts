@@ -21,8 +21,8 @@ function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   );
 }
 
-function getRerunCellsWhenDirty(uri: vscode.Uri) {
-  const config = vscode.workspace.getConfiguration("vitale", uri);
+function getRerunCellsWhenDirty() {
+  const config = vscode.workspace.getConfiguration("vitale");
   return config.get("rerunCellsWhenDirty", true);
 }
 
@@ -76,7 +76,7 @@ export class NotebookController {
 
     this._controller.supportedLanguages = this.supportedLanguages;
     this._controller.supportsExecutionOrder = true;
-    this._controller.executeHandler = this._executeAll.bind(this);
+    this._controller.executeHandler = this.executeCells.bind(this);
 
     this.run("idle");
   }
@@ -129,7 +129,7 @@ export class NotebookController {
   private makeClient(ws: WebSocket) {
     return createBirpc<ServerFunctions, ClientFunctions>(
       {
-        dirtyCell: this.dirtyCell.bind(this),
+        markCellsDirty: this.markCellsDirty.bind(this),
         startCellExecution: this.startCellExecution.bind(this),
         endCellExecution: this.endCellExecution.bind(this),
       },
@@ -240,7 +240,7 @@ export class NotebookController {
       vscode.Uri.parse(notebookUri)
     );
     const cells = notebook.getCells().filter((cell) => cell.metadata.dirty);
-    this._executeAll(cells, notebook);
+    this.executeCells(cells);
   }
 
   private makeClientPromise() {
@@ -294,15 +294,25 @@ export class NotebookController {
     vscode.workspace.applyEdit(edit);
   }
 
-  private async dirtyCell(path: string, id: string) {
-    const uri = vscode.Uri.file(path);
-    const notebook = await vscode.workspace.openNotebookDocument(uri);
-    const cell = notebook.getCells().find((cell) => cell.metadata.id === id);
-    if (cell) {
-      this.setCellDirty(cell, true);
-      if (getRerunCellsWhenDirty(uri)) {
-        this._executeAll([cell], notebook);
+  private async markCellsDirty(cells: { path: string; cellId: string }[]) {
+    const notebookCells: vscode.NotebookCell[] = [];
+
+    for (const { path, cellId } of cells) {
+      const uri = vscode.Uri.file(path);
+      const notebook = await vscode.workspace.openNotebookDocument(uri);
+      const cell = notebook
+        .getCells()
+        .find((cell) => cell.metadata.id === cellId);
+      if (cell) {
+        notebookCells.push(cell);
       }
+    }
+
+    for (const cell of notebookCells) {
+      this.setCellDirty(cell, true);
+    }
+    if (getRerunCellsWhenDirty()) {
+      this.executeCells(notebookCells);
     }
   }
 
@@ -354,30 +364,15 @@ export class NotebookController {
     }
   }
 
-  private _executeAll(
-    cells: vscode.NotebookCell[],
-    notebook: vscode.NotebookDocument
-  ): void {
-    for (const cell of cells) {
-      this._doExecution(notebook.uri.fsPath, cell);
-    }
-  }
+  private async executeCells(notebookCells: vscode.NotebookCell[]) {
+    const cells = notebookCells.map((cell) => ({
+      path: cell.notebook.uri.fsPath,
+      cellId: cell.metadata.id,
+      language: cell.document.languageId,
+      code: cell.document.getText(),
+    }));
 
-  private async _doExecution(
-    path: string,
-    cell: vscode.NotebookCell
-  ): Promise<void> {
-    try {
-      const client = await this.getClient();
-
-      client.executeCell(
-        path,
-        cell.metadata.id,
-        cell.document.languageId,
-        cell.document.getText()
-      );
-    } catch (e) {
-      console.error(e);
-    }
+    const client = await this.getClient();
+    client.executeCells(cells);
   }
 }
