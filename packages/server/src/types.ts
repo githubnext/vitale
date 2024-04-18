@@ -36,6 +36,7 @@ export type SourceDescription = {
   code: string;
   ast: babelTypes.File;
   type: "server" | "client";
+  autoExports: babelTypes.ImportDeclaration[];
 };
 
 export type Options = {

@@ -35,15 +35,7 @@ function makeCellOutputRootIdDecl(cellId: string) {
   ]);
 }
 
-function rewrite(
-  code: string,
-  language: string,
-  id: string,
-  cellId: string,
-  autoImports: babelTypes.ImportDeclaration[]
-): SourceDescription {
-  let type: "server" | "client" = "server";
-
+function parseCode(code: string, language: string) {
   const plugins = ((): ParserOptions["plugins"] => {
     switch (language) {
       case "typescriptreact":
@@ -60,8 +52,6 @@ function rewrite(
   })();
   const parserOptions: ParserOptions = { sourceType: "module", plugins };
 
-  let ast: babelTypes.File;
-
   const exprAst = (() => {
     try {
       return babelParser.parseExpression(code, parserOptions);
@@ -70,27 +60,47 @@ function rewrite(
     }
   })();
   if (exprAst) {
-    ast = babelTypes.file(
-      babelTypes.program([babelTypes.expressionStatement(exprAst)])
-    );
+    if (exprAst.type === "FunctionExpression") {
+      return babelTypes.file(
+        babelTypes.program([
+          babelTypes.functionDeclaration(
+            exprAst.id,
+            exprAst.params,
+            exprAst.body,
+            exprAst.generator,
+            exprAst.async
+          ),
+        ])
+      );
+    } else {
+      return babelTypes.file(
+        babelTypes.program([babelTypes.expressionStatement(exprAst)])
+      );
+    }
   } else {
-    ast = babelParser.parse(code, parserOptions);
+    const ast = babelParser.parse(code, parserOptions);
     if (ast.program.body.length === 0) {
       ast.program = babelTypes.program([
         babelTypes.expressionStatement(babelTypes.buildUndefinedNode()),
       ]);
     }
+    return ast;
   }
+}
 
+function findAutoExports(
+  ast: babelTypes.File,
+  id: string
+): babelTypes.ImportDeclaration[] {
+  const autoExports: babelTypes.ImportDeclaration[] = [];
   const exportedNames: string[] = [];
   for (const [i, stmt] of ast.program.body.entries()) {
     if (stmt.type === "ImportDeclaration") {
-      // TODO(jaked)
-      // need to clean up autoImports when cell changes
-      autoImports.push(stmt);
+      autoExports.push(stmt);
+    } else if (stmt.type === "FunctionDeclaration" && stmt.id) {
+      ast.program.body[i] = babelTypes.exportNamedDeclaration(stmt);
+      exportedNames.push(stmt.id?.name);
     } else if (stmt.type === "VariableDeclaration") {
-      // TODO(jaked)
-      // handle function declarations
       ast.program.body[i] = babelTypes.exportNamedDeclaration(stmt);
       for (const decl of stmt.declarations) {
         if (decl.id.type === "Identifier") {
@@ -108,31 +118,7 @@ function rewrite(
       }
     }
   }
-
-  const unbound = new Set<string>();
-  traverse.default(ast, {
-    ReferencedIdentifier(path) {
-      if (!path.scope.hasBinding(path.node.name)) {
-        unbound.add(path.node.name);
-      }
-    },
-  });
-  next: for (const name of unbound) {
-    for (const decl of autoImports) {
-      for (const spec of decl.specifiers) {
-        if (spec.local.name === name) {
-          ast.program.body.unshift(
-            babelTypes.importDeclaration([spec], decl.source)
-          );
-          continue next;
-        }
-      }
-    }
-  }
-
-  // TODO(jaked)
-  // need to clean up autoImports when cell changes
-  autoImports.push(
+  autoExports.push(
     babelTypes.importDeclaration(
       exportedNames.map((name) => {
         const ident = babelTypes.identifier(name);
@@ -141,6 +127,51 @@ function rewrite(
       babelTypes.stringLiteral(id)
     )
   );
+  return autoExports;
+}
+
+function findAutoImports(
+  ast: babelTypes.File,
+  cells: Map<string, SourceDescription>
+): babelTypes.ImportDeclaration[] {
+  const unbound = new Set<string>();
+  traverse.default(ast, {
+    ReferencedIdentifier(path) {
+      if (!path.scope.hasBinding(path.node.name)) {
+        unbound.add(path.node.name);
+      }
+    },
+  });
+
+  const autoImports: babelTypes.ImportDeclaration[] = [];
+  next: for (const name of unbound) {
+    for (const cell of cells.values()) {
+      for (const decl of cell.autoExports) {
+        for (const spec of decl.specifiers) {
+          if (spec.local.name === name) {
+            autoImports.push(babelTypes.importDeclaration([spec], decl.source));
+            continue next;
+          }
+        }
+      }
+    }
+  }
+  return autoImports;
+}
+
+function rewrite(
+  code: string,
+  language: string,
+  id: string,
+  cellId: string,
+  cells: Map<string, SourceDescription>
+): SourceDescription {
+  let type: "server" | "client" = "server";
+
+  const ast = parseCode(code, language);
+  const autoExports = findAutoExports(ast, id);
+  const autoImports = findAutoImports(ast, cells);
+  ast.program.body.unshift(...autoImports);
 
   // "use client" directive, executed the cell verbatim on the client
   if (ast.program.directives[0]?.value.value === "use client") {
@@ -195,6 +226,7 @@ function rewrite(
     ast,
     code: generatorResult.code,
     type,
+    autoExports,
   };
 }
 

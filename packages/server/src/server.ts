@@ -10,7 +10,6 @@ import { WebSocketServer, type WebSocket } from "ws";
 import rewrite from "./rewrite";
 import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
 import { Options, SourceDescription } from "./types";
-import * as babelTypes from "@babel/types";
 
 const trailingSeparatorRE = /[?&]$/;
 const timestampRE = /\bt=\d{13}&?\b/;
@@ -119,7 +118,6 @@ class VitaleDevServer {
     BirpcReturn<ClientFunctions, ServerFunctions>
   > = new Map();
   private cells: Map<string, SourceDescription>;
-  private autoImports: babelTypes.ImportDeclaration[] = [];
 
   private constructor(
     viteServer: ViteDevServer,
@@ -283,7 +281,8 @@ class VitaleDevServer {
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}?cellId=${cellId}.${ext}`;
-      const rewritten = rewrite(code, language, id, cellId, this.autoImports);
+      this.cells.delete(id);
+      const rewritten = rewrite(code, language, id, cellId, this.cells);
       this.cells.set(id, rewritten);
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
@@ -295,7 +294,9 @@ class VitaleDevServer {
     for (const { path, cellId, language } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}?cellId=${cellId}.${ext}`;
-      this.executeCell(id, path, cellId);
+      this.executeCell(id, path, cellId).catch((e) => {
+        console.error(e);
+      });
     }
 
     // don't mark cells dirty if they were just executed
