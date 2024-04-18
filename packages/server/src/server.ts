@@ -257,6 +257,9 @@ class VitaleDevServer {
   }
 
   private markCellsDirty(cells: { path: string; cellId: string }[]) {
+    if (cells.length === 0) {
+      return;
+    }
     for (const client of this.clients.values()) {
       client.markCellsDirty(cells);
     }

@@ -359,6 +359,9 @@ export class NotebookController {
   }
 
   private async executeCells(notebookCells: vscode.NotebookCell[]) {
+    if (notebookCells.length === 0) {
+      return;
+    }
     const cells = notebookCells.map((cell) => ({
       path: cell.notebook.uri.fsPath,
       cellId: cell.metadata.id,
