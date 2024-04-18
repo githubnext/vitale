@@ -19,6 +19,9 @@ export function activate(context: vscode.ExtensionContext) {
         controller.runDirty(ctx.notebookEditor.notebookUri);
       }
     ),
+    vscode.commands.registerCommand("vitale.copyToClipboard", (s: string) => {
+      vscode.env.clipboard.writeText(s);
+    }),
     vscode.workspace.registerNotebookSerializer(
       "vitale-notebook",
       new NotebookSerializer(),
