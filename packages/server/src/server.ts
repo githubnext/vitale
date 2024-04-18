@@ -10,6 +10,7 @@ import { WebSocketServer, type WebSocket } from "ws";
 import rewrite from "./rewrite";
 import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
 import { Options, SourceDescription } from "./types";
+import * as babelTypes from "@babel/types";
 
 const trailingSeparatorRE = /[?&]$/;
 const timestampRE = /\bt=\d{13}&?\b/;
@@ -118,6 +119,7 @@ class VitaleDevServer {
     BirpcReturn<ClientFunctions, ServerFunctions>
   > = new Map();
   private cells: Map<string, SourceDescription>;
+  private autoImports: babelTypes.ImportDeclaration[] = [];
 
   private constructor(
     viteServer: ViteDevServer,
@@ -281,7 +283,8 @@ class VitaleDevServer {
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}?cellId=${cellId}.${ext}`;
-      this.cells.set(id, rewrite(code, language, cellId));
+      const rewritten = rewrite(code, language, id, cellId, this.autoImports);
+      this.cells.set(id, rewritten);
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
       if (mod) this.viteServer.moduleGraph.invalidateModule(mod);
@@ -314,8 +317,12 @@ class VitaleDevServer {
           console.log("ping");
           return "pong";
         },
-        executeCells(cells) {
-          return self.executeCellsRPC(cells);
+        async executeCells(cells) {
+          try {
+            return self.executeCellsRPC(cells);
+          } catch (e) {
+            console.error(e);
+          }
         },
       },
       {

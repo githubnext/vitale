@@ -317,7 +317,6 @@ export class NotebookController {
   }
 
   private async startCellExecution(path: string, id: string) {
-    console.log(`client startCellExecution`, path, id);
     const notebook = await vscode.workspace.openNotebookDocument(
       vscode.Uri.file(path)
     );
@@ -332,29 +331,24 @@ export class NotebookController {
       execution.start(Date.now());
 
       const key = `${path}-${id}`;
-      console.log(`started execution ${key}`);
       this._executions.set(key, execution);
     }
   }
 
   private cancelCellExecution(path: string, id: string) {
-    console.log(`client cancelCellExecution`, path, id);
     // TODO(jaked) notify server to cancel execution
     const key = `${path}-${id}`;
     const execution = this._executions.get(key);
     if (execution) {
-      console.log(`canceled execution ${key}`);
       execution.end(true, Date.now());
       this._executions.delete(key);
     }
   }
 
   private endCellExecution(path: string, id: string, cellOutput: CellOutput) {
-    console.log(`client endCellExecution`, path, id, cellOutput);
     const key = `${path}-${id}`;
     const execution = this._executions.get(key);
     if (execution) {
-      console.log(`ended execution ${key}`);
       const notebookCellOutput = cellOutputToNotebookCellOutput(cellOutput);
       execution.replaceOutput(notebookCellOutput);
       execution.end(true, Date.now());

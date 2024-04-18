@@ -2,6 +2,7 @@ import * as babelGenerator from "@babel/generator";
 import type { ParserOptions } from "@babel/parser";
 import * as babelParser from "@babel/parser";
 import * as babelTypes from "@babel/types";
+import traverse from "@babel/traverse";
 import type { SourceDescription } from "./types";
 
 const reactImports = babelParser.parse(
@@ -37,7 +38,9 @@ function makeCellOutputRootIdDecl(cellId: string) {
 function rewrite(
   code: string,
   language: string,
-  cellId: string
+  id: string,
+  cellId: string,
+  autoImports: babelTypes.ImportDeclaration[]
 ): SourceDescription {
   let type: "server" | "client" = "server";
 
@@ -57,7 +60,7 @@ function rewrite(
   })();
   const parserOptions: ParserOptions = { sourceType: "module", plugins };
 
-  let program: babelTypes.Program;
+  let ast: babelTypes.File;
 
   const exprAst = (() => {
     try {
@@ -67,27 +70,87 @@ function rewrite(
     }
   })();
   if (exprAst) {
-    program = babelTypes.program([babelTypes.expressionStatement(exprAst)]);
+    ast = babelTypes.file(
+      babelTypes.program([babelTypes.expressionStatement(exprAst)])
+    );
   } else {
-    const ast = babelParser.parse(code, parserOptions);
+    ast = babelParser.parse(code, parserOptions);
     if (ast.program.body.length === 0) {
-      program = babelTypes.program([
+      ast.program = babelTypes.program([
         babelTypes.expressionStatement(babelTypes.buildUndefinedNode()),
       ]);
-    } else {
-      program = ast.program;
     }
   }
 
+  const exportedNames: string[] = [];
+  for (const [i, stmt] of ast.program.body.entries()) {
+    if (stmt.type === "ImportDeclaration") {
+      // TODO(jaked)
+      // need to clean up autoImports when cell changes
+      autoImports.push(stmt);
+    } else if (stmt.type === "VariableDeclaration") {
+      // TODO(jaked)
+      // handle function declarations
+      ast.program.body[i] = babelTypes.exportNamedDeclaration(stmt);
+      for (const decl of stmt.declarations) {
+        if (decl.id.type === "Identifier") {
+          exportedNames.push(decl.id.name);
+        } else if (decl.id.type === "ObjectPattern") {
+          for (const prop of decl.id.properties) {
+            if (
+              prop.type === "ObjectProperty" &&
+              prop.value.type === "Identifier"
+            ) {
+              exportedNames.push(prop.value.name);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const unbound = new Set<string>();
+  traverse.default(ast, {
+    ReferencedIdentifier(path) {
+      if (!path.scope.hasBinding(path.node.name)) {
+        unbound.add(path.node.name);
+      }
+    },
+  });
+  next: for (const name of unbound) {
+    for (const decl of autoImports) {
+      for (const spec of decl.specifiers) {
+        if (spec.local.name === name) {
+          ast.program.body.unshift(
+            babelTypes.importDeclaration([spec], decl.source)
+          );
+          continue next;
+        }
+      }
+    }
+  }
+
+  // TODO(jaked)
+  // need to clean up autoImports when cell changes
+  autoImports.push(
+    babelTypes.importDeclaration(
+      exportedNames.map((name) => {
+        const ident = babelTypes.identifier(name);
+        return babelTypes.importSpecifier(ident, ident);
+      }),
+      babelTypes.stringLiteral(id)
+    )
+  );
+
   // "use client" directive, executed the cell verbatim on the client
-  if (program.directives[0]?.value.value === "use client") {
-    program.body.unshift(makeCellOutputRootIdDecl(cellId));
+  if (ast.program.directives[0]?.value.value === "use client") {
+    ast.program.body.unshift(makeCellOutputRootIdDecl(cellId));
     type = "client";
   }
 
   // no "use client" directive, check for JSX
   else {
-    const body = program.body;
+    const body = ast.program.body;
     const last = body[body.length - 1];
 
     if (last.type === "ExpressionStatement") {
@@ -127,8 +190,12 @@ function rewrite(
     }
   }
 
-  const generatorResult = new babelGenerator.CodeGenerator(program).generate();
-  return { ast: program, code: generatorResult.code, type };
+  const generatorResult = new babelGenerator.CodeGenerator(ast).generate();
+  return {
+    ast,
+    code: generatorResult.code,
+    type,
+  };
 }
 
 export default rewrite;

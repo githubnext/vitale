@@ -23,6 +23,7 @@
   "dependencies": {
     "@babel/generator": "^7.24.4",
     "@babel/parser": "^7.24.4",
+    "@babel/traverse": "^7.24.1",
     "@babel/types": "^7.24.0",
     "birpc": "^0.2.17",
     "cac": "^6.7.14",
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@types/babel__generator": "^7.6.8",
+    "@types/babel__traverse": "^7.20.5",
     "@types/cors": "^2.8.17",
     "@types/ws": "^8.5.10",
     "tsup": "^8.0.2",

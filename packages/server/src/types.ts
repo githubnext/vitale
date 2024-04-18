@@ -1,4 +1,4 @@
-import { Program } from "@babel/types";
+import * as babelTypes from "@babel/types";
 
 export interface CellOutputItem {
   data: number[]; // Uint8Array
@@ -34,7 +34,7 @@ export type ClientFunctions = {
 
 export type SourceDescription = {
   code: string;
-  ast: Program;
+  ast: babelTypes.File;
   type: "server" | "client";
 };
 
