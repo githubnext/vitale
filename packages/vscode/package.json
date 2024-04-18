@@ -2,7 +2,7 @@
   "name": "vitale-vscode",
   "displayName": "Vitale",
   "description": "",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "MIT",
   "engines": {
     "vscode": "^1.87.0"
