@@ -1,9 +1,11 @@
-import * as babelGenerator from "@babel/generator";
+import _babelGenerator from "@babel/generator";
 import type { ParserOptions } from "@babel/parser";
 import * as babelParser from "@babel/parser";
+import _babelTraverse from "@babel/traverse";
 import * as babelTypes from "@babel/types";
-import traverse from "@babel/traverse";
 import type { SourceDescription } from "./types";
+const babelGenerator: typeof _babelGenerator = (_babelGenerator as any).default;
+const babelTraverse: typeof _babelTraverse = (_babelTraverse as any).default;
 
 const reactImports = babelParser.parse(
   `
@@ -135,7 +137,7 @@ function findAutoImports(
   cells: Map<string, SourceDescription>
 ): babelTypes.ImportDeclaration[] {
   const unbound = new Set<string>();
-  traverse.default(ast, {
+  babelTraverse(ast, {
     ReferencedIdentifier(path) {
       if (!path.scope.hasBinding(path.node.name)) {
         unbound.add(path.node.name);
@@ -221,7 +223,7 @@ function rewrite(
     }
   }
 
-  const generatorResult = new babelGenerator.CodeGenerator(ast).generate();
+  const generatorResult = babelGenerator(ast);
   return {
     ast,
     code: generatorResult.code,
