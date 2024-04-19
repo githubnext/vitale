@@ -35,6 +35,9 @@ importers:
       json5:
         specifier: ^2.2.3
         version: 2.2.3
+      picocolors:
+        specifier: ^1.0.0
+        version: 1.0.0
       vite:
         specifier: ^5.2.6
         version: 5.2.6

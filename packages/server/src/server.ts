@@ -10,11 +10,16 @@ import { WebSocketServer, type WebSocket } from "ws";
 import rewrite from "./rewrite";
 import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
 import { Options, SourceDescription } from "./types";
+import { handleHMRUpdate } from "./hmr";
 
 const trailingSeparatorRE = /[?&]$/;
 const timestampRE = /\bt=\d{13}&?\b/;
 function removeTimestampQuery(url: string): string {
   return url.replace(timestampRE, "").replace(trailingSeparatorRE, "");
+}
+const htmlRE = /\bhtml&?\b/;
+function removeHtmlQuery(url: string): string {
+  return url.replace(htmlRE, "").replace(trailingSeparatorRE, "");
 }
 
 interface PossibleSVG {
@@ -61,6 +66,37 @@ function extOfLanguage(language: string): string {
   }
 }
 
+function makeHtmlSource(url: string) {
+  const [_, _path, cellId] = cellIdRegex.exec(url)!;
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vitale</title>
+  </head>
+  <body>
+    <div id="cell-output-root-${cellId}"></div>
+    <script type="module" src="${url}"></script>
+    <script>
+      if (window.parent !== window) {
+        const observer = new ResizeObserver((entries) => {
+          const msg = {
+            type: "resize-iframe",
+            cellId: "${cellId}",
+            height: entries[0].borderBoxSize[0].blockSize,
+          };
+          window.parent.postMessage(msg, "*");
+        });
+        observer.observe(document.getElementsByTagName('html')[0], { box: "border-box" });
+      }
+    </script>
+  </body>
+</html>
+`;
+}
+
 class VitaleDevServer {
   static async construct(options: Options) {
     const cells: Map<string, SourceDescription> = new Map();
@@ -84,20 +120,31 @@ class VitaleDevServer {
           configureServer(server) {
             server.middlewares.use(corsMiddleware({}));
 
-            // this is the core of `transformMiddleware` from vite
-            // we must reimplement it in order to serve `.vnb?cellId` paths
             server.middlewares.use(async (req, res, next) => {
               if (req.url) {
-                const url = removeTimestampQuery(req.url);
+                const htmlQuery = htmlRE.test(req.url);
+                const url = removeHtmlQuery(removeTimestampQuery(req.url));
                 if (cellIdRegex.test(url)) {
-                  const result = await server.transformRequest(url);
-                  if (result) {
-                    return send(req, res, result.code, "js", {
-                      etag: result.etag,
-                      cacheControl: "no-cache",
+                  if (htmlQuery) {
+                    const html = await server.transformIndexHtml(
+                      url,
+                      makeHtmlSource(url)
+                    );
+                    return send(req, res, html, "html", {
                       headers: server.config.server.headers,
-                      map: result.map,
                     });
+                  } else {
+                    // this is the core of `transformMiddleware` from vite
+                    // we must reimplement it in order to serve `.vnb?cellId` paths
+                    const result = await server.transformRequest(url);
+                    if (result) {
+                      return send(req, res, result.code, "js", {
+                        etag: result.etag,
+                        cacheControl: "no-cache",
+                        headers: server.config.server.headers,
+                        map: result.map,
+                      });
+                    }
                   }
                 }
               }
@@ -289,7 +336,10 @@ class VitaleDevServer {
       this.cells.set(id, rewritten);
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
-      if (mod) this.viteServer.moduleGraph.invalidateModule(mod);
+      if (mod) {
+        this.viteServer.moduleGraph.invalidateModule(mod);
+        handleHMRUpdate(id, this.viteServer);
+      }
 
       this.invalidateModule(id, dirtyCells);
     }
