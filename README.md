@@ -95,10 +95,5 @@ custom renderer for React hot-reloading).
 
 - cancelling an execution only cancels it client-side; if you get your server
   stuck you can restart it with `Vitale: Restart Kernel`
-- each cell is its own module; you can't reference variables defined in other
-  cells, and you need to repeat imports in each cell
 - rerunning a React cell doesn't hot reload; the component is remounted and
   loses its state
-- rendered output of client-side cells gets cleared when you save the notebook
-  or restart the server, and after that rendering is broken; you can recover by
-  closing and reopening the notebook
