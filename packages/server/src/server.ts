@@ -49,7 +49,7 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
   );
 }
 
-const cellIdRegex = /^([^?]+\.vnb)\?cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
+const cellIdRegex = /^([^?]+\.vnb)-cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
 
 function extOfLanguage(language: string): string {
   switch (language) {
@@ -111,7 +111,10 @@ class VitaleDevServer {
         {
           name: "vitale",
           resolveId(source) {
-            return cells.has(source) ? source : null;
+            const id = source.startsWith(viteServer.config.root)
+              ? source
+              : Path.join(viteServer.config.root, source);
+            return cells.has(id) ? id : null;
           },
           load(id) {
             return cells.has(id) ? cells.get(id)!.code : null;
@@ -135,7 +138,7 @@ class VitaleDevServer {
                     });
                   } else {
                     // this is the core of `transformMiddleware` from vite
-                    // we must reimplement it in order to serve `.vnb?cellId` paths
+                    // we must reimplement it in order to serve `.vnb-cellId` paths
                     const result = await server.transformRequest(url);
                     if (result) {
                       return send(req, res, result.code, "js", {
@@ -330,7 +333,7 @@ class VitaleDevServer {
 
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
-      const id = `${path}?cellId=${cellId}.${ext}`;
+      const id = `${path}-cellId=${cellId}.${ext}`;
       this.cells.delete(id);
       const rewritten = rewrite(code, language, id, cellId, this.cells);
       this.cells.set(id, rewritten);
@@ -346,7 +349,7 @@ class VitaleDevServer {
 
     for (const { path, cellId, language } of cells) {
       const ext = extOfLanguage(language);
-      const id = `${path}?cellId=${cellId}.${ext}`;
+      const id = `${path}-cellId=${cellId}.${ext}`;
       this.executeCell(id, path, cellId).catch((e) => {
         console.error(e);
       });
