@@ -1,0 +1,7 @@
+{
+	"pnpm": {
+		"patchedDependencies": {
+			"vite@5.2.6": "patches/vite@5.2.6.patch"
+		}
+	}
+}

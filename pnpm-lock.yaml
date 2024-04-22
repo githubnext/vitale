@@ -4,7 +4,14 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  vite@5.2.6:
+    hash: kqh4oqhknnsfnycza4ze24daba
+    path: patches/vite@5.2.6.patch
+
 importers:
+
+  .: {}
 
   packages/server:
     dependencies:
@@ -40,7 +47,7 @@ importers:
         version: 1.0.0
       vite:
         specifier: ^5.2.6
-        version: 5.2.6
+        version: 5.2.6(patch_hash=kqh4oqhknnsfnycza4ze24daba)
       ws:
         specifier: ^8.16.0
         version: 8.16.0
@@ -3463,7 +3470,7 @@ packages:
     engines: {node: '>= 0.8'}
     dev: false
 
-  /vite@5.2.6:
+  /vite@5.2.6(patch_hash=kqh4oqhknnsfnycza4ze24daba):
     resolution: {integrity: sha512-FPtnxFlSIKYjZ2eosBQamz4CbyrTizbZ3hnGJlh/wMtCrlp1Hah6AzBLjGI5I2urTfNnpovpHdrL6YRuBOPnCA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -3497,6 +3504,7 @@ packages:
     optionalDependencies:
       fsevents: 2.3.3
     dev: false
+    patched: true
 
   /webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}

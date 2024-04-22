@@ -1,0 +1,20 @@
+diff --git a/dist/client/client.mjs b/dist/client/client.mjs
+index b28da41a442b5815a2d12ef8adf68a4974707bc7..25b30ca3726c05e61eb4241bbcc9daa8ae32409f 100644
+--- a/dist/client/client.mjs
++++ b/dist/client/client.mjs
+@@ -650,6 +650,15 @@ async function handleMessage(payload) {
+                 }
+                 return;
+             }
++            else if (payload.triggeredBy) {
++                const pagePath = decodeURI(location.pathname);
++                // TODO(jaked)
++                // this isn't quite correct;
++                // we don't have server.config.root here and triggeredBy includes it
++                if (payload.triggeredBy.endsWith(pagePath)) {
++                    pageReload();
++                }
++            }
+             else {
+                 pageReload();
+             }
