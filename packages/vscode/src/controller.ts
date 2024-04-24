@@ -350,7 +350,12 @@ export class NotebookController {
     const execution = this._executions.get(key);
     if (execution) {
       const notebookCellOutput = cellOutputToNotebookCellOutput(cellOutput);
-      execution.replaceOutput(notebookCellOutput);
+      execution.clearOutput();
+      if (notebookCellOutput.items.length > 0) {
+        // VS Code doesn't clear the output if there are no items
+        // even if you call clearOutput ??
+        execution.appendOutput(notebookCellOutput);
+      }
       execution.end(true, Date.now());
       this._executions.delete(key);
 
