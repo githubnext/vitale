@@ -212,18 +212,12 @@ function rewrite(
       }
 
       // cell ends in a non-JSX expresion, make it the default export
-      else {
+      // unless there's already a default export
+      else if (!body.some((stmt) => stmt.type === "ExportDefaultDeclaration")) {
         body[body.length - 1] = babelTypes.exportDefaultDeclaration(
           last.expression
         );
       }
-    }
-
-    // cell ends in a non-expression, generate a dummy default export
-    else {
-      body.push(
-        babelTypes.exportDefaultDeclaration(babelTypes.buildUndefinedNode())
-      );
     }
   }
 
