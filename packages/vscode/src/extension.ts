@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { NotebookSerializer } from "./serializer";
 import { NotebookController } from "./controller";
 import { NotebookCellStatusBarItemProvider } from "./cellStatusBarItemProvider";
-import { handleDidChangeNotebookDocument } from "./handleDidChangeNotebookDocument";
+import { makeHandleDidChangeNotebookDocument } from "./handleDidChangeNotebookDocument";
 
 export function activate(context: vscode.ExtensionContext) {
   const controller = new NotebookController(
@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
       { transientOutputs: true }
     ),
     vscode.workspace.onDidChangeNotebookDocument(
-      handleDidChangeNotebookDocument
+      makeHandleDidChangeNotebookDocument(controller)
     ),
     controller,
     vscode.notebooks.registerNotebookCellStatusBarItemProvider(

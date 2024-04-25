@@ -379,6 +379,40 @@ class VitaleDevServer {
     this.markCellsDirty(dirtyCells);
   }
 
+  private removeCellsRPC(
+    cells: {
+      path: string;
+      cellId: string;
+      language: string;
+    }[]
+  ) {
+    let dirtyCells: { path: string; cellId: string }[] = [];
+
+    for (const { path, cellId, language } of cells) {
+      const ext = extOfLanguage(language);
+      const id = `${path}-cellId=${cellId}.${ext}`;
+      this.cells.delete(id);
+
+      const mod = this.viteServer.moduleGraph.getModuleById(id);
+      if (mod) {
+        this.viteServer.moduleGraph.invalidateModule(mod);
+        // TODO(jaked) HMR remove?
+      }
+
+      this.invalidateModule(id, dirtyCells);
+    }
+
+    // don't mark cells dirty if they were just removed
+    dirtyCells = dirtyCells.filter(
+      (dirtyCell) =>
+        !cells.some(
+          (cell) =>
+            cell.path === dirtyCell.path && cell.cellId === dirtyCell.cellId
+        )
+    );
+    this.markCellsDirty(dirtyCells);
+  }
+
   private setupClient(ws: WebSocket) {
     const self = this;
     const rpc = createBirpc<ClientFunctions, ServerFunctions>(
@@ -390,6 +424,13 @@ class VitaleDevServer {
         async executeCells(cells) {
           try {
             return self.executeCellsRPC(cells);
+          } catch (e) {
+            console.error(e);
+          }
+        },
+        async removeCells(cells) {
+          try {
+            return self.removeCellsRPC(cells);
           } catch (e) {
             console.error(e);
           }
