@@ -9,7 +9,7 @@ import { ESModulesRunner, ViteRuntime } from "vite/runtime";
 import { WebSocketServer, type WebSocket } from "ws";
 import rewrite from "./rewrite";
 import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
-import { Options, SourceDescription } from "./types";
+import { Cell, Options } from "./types";
 import { handleHMRUpdate } from "./hmr";
 
 const trailingSeparatorRE = /[?&]$/;
@@ -99,7 +99,7 @@ function makeHtmlSource(url: string) {
 
 class VitaleDevServer {
   static async construct(options: Options) {
-    const cells: Map<string, SourceDescription> = new Map();
+    const cells: Map<string, Cell> = new Map();
     const viteServer = await createViteServer({
       server: {
         port: options.port,
@@ -117,7 +117,12 @@ class VitaleDevServer {
             return cells.has(id) ? id : null;
           },
           load(id) {
-            return cells.has(id) ? cells.get(id)!.code : null;
+            const cell = cells.get(id);
+            if (cell && cell.sourceDescription) {
+              return cell.sourceDescription.code;
+            } else {
+              return null;
+            }
           },
 
           configureServer(server) {
@@ -167,12 +172,9 @@ class VitaleDevServer {
     WebSocket,
     BirpcReturn<ClientFunctions, ServerFunctions>
   > = new Map();
-  private cells: Map<string, SourceDescription>;
+  private cells: Map<string, Cell>;
 
-  private constructor(
-    viteServer: ViteDevServer,
-    cells: Map<string, SourceDescription>
-  ) {
+  private constructor(viteServer: ViteDevServer, cells: Map<string, Cell>) {
     this.viteServer = viteServer;
     this.cells = cells;
 
@@ -218,19 +220,32 @@ class VitaleDevServer {
     let data;
     let mime;
 
-    // client execution
-    if (this.cells.get(id)?.type === "client") {
-      data = JSON.stringify({
-        // TODO(jaked) strip workspace root when executeCell is called
-        id: id.substring(this.viteServer.config.root.length + 1),
-        origin: this.viteServer.config.server.origin,
-      });
-      mime = "application/x-vitale";
-    }
+    try {
+      const cell = this.cells.get(id);
+      if (!cell) throw new Error(`cell not found: ${id}`);
 
-    // server execution
-    else {
-      try {
+      if (!cell.sourceDescription) {
+        cell.sourceDescription = rewrite(
+          cell.code,
+          cell.language,
+          id,
+          cell.cellId,
+          this.cells
+        );
+      }
+
+      // client execution
+      if (cell.sourceDescription.type === "client") {
+        data = JSON.stringify({
+          // TODO(jaked) strip workspace root when executeCell is called
+          id: id.substring(this.viteServer.config.root.length + 1),
+          origin: this.viteServer.config.server.origin,
+        });
+        mime = "application/x-vitale";
+      }
+
+      // server execution
+      else {
         let { default: result } = await this.viteRuntime.executeUrl(id);
         if (result instanceof Promise) result = await result;
         if (
@@ -255,16 +270,16 @@ class VitaleDevServer {
           mime = "text/x-javascript";
           data = JSON.stringify(result);
         }
-      } catch (e) {
-        const err = e as Error;
-        const obj = {
-          name: err.name,
-          message: err.message,
-          stack: err.stack,
-        };
-        data = JSON.stringify(obj, undefined, "\t");
-        mime = "application/vnd.code.notebook.error";
       }
+    } catch (e) {
+      const err = e as Error;
+      const obj = {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+      };
+      data = JSON.stringify(obj, undefined, "\t");
+      mime = "application/vnd.code.notebook.error";
     }
 
     const cellOutput: CellOutput = {
@@ -334,9 +349,7 @@ class VitaleDevServer {
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}-cellId=${cellId}.${ext}`;
-      this.cells.delete(id);
-      const rewritten = rewrite(code, language, id, cellId, this.cells);
-      this.cells.set(id, rewritten);
+      this.cells.set(id, { cellId, code, language });
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
       if (mod) {

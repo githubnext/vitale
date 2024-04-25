@@ -3,7 +3,7 @@ import type { ParserOptions } from "@babel/parser";
 import * as babelParser from "@babel/parser";
 import _babelTraverse from "@babel/traverse";
 import * as babelTypes from "@babel/types";
-import type { SourceDescription } from "./types";
+import type { Cell, SourceDescription } from "./types";
 const babelGenerator: typeof _babelGenerator = (_babelGenerator as any).default;
 const babelTraverse: typeof _babelTraverse = (_babelTraverse as any).default;
 
@@ -134,7 +134,7 @@ function findAutoExports(
 
 function findAutoImports(
   ast: babelTypes.File,
-  cells: Map<string, SourceDescription>
+  cells: Map<string, Cell>
 ): babelTypes.ImportDeclaration[] {
   const unbound = new Set<string>();
   babelTraverse(ast, {
@@ -148,11 +148,15 @@ function findAutoImports(
   const autoImports: babelTypes.ImportDeclaration[] = [];
   next: for (const name of unbound) {
     for (const cell of cells.values()) {
-      for (const decl of cell.autoExports) {
-        for (const spec of decl.specifiers) {
-          if (spec.local.name === name) {
-            autoImports.push(babelTypes.importDeclaration([spec], decl.source));
-            continue next;
+      if (cell.sourceDescription) {
+        for (const decl of cell.sourceDescription.autoExports) {
+          for (const spec of decl.specifiers) {
+            if (spec.local.name === name) {
+              autoImports.push(
+                babelTypes.importDeclaration([spec], decl.source)
+              );
+              continue next;
+            }
           }
         }
       }
@@ -166,7 +170,7 @@ function rewrite(
   language: string,
   id: string,
   cellId: string,
-  cells: Map<string, SourceDescription>
+  cells: Map<string, Cell>
 ): SourceDescription {
   let type: "server" | "client" = "server";
 

@@ -39,6 +39,13 @@ export type SourceDescription = {
   autoExports: babelTypes.ImportDeclaration[];
 };
 
+export type Cell = {
+  cellId: string;
+  code: string;
+  language: string;
+  sourceDescription?: SourceDescription;
+};
+
 export type Options = {
   port: number;
 };
