@@ -29,6 +29,7 @@ function getRerunCellsWhenDirty() {
 type Client = BirpcReturn<ServerFunctions, ClientFunctions>;
 
 type State =
+  | "need-port"
   | "idle"
   | "starting"
   | "start-failed"
@@ -54,7 +55,7 @@ export class NotebookController {
   private _executionOrder = 0;
   private readonly _controller: vscode.NotebookController;
 
-  private _state: State = "idle";
+  private _state: State = "need-port";
   private _tries: number = RECONNECT_TRIES;
   private _port: undefined | number;
   private _process: undefined | ChildProcess;
@@ -78,7 +79,10 @@ export class NotebookController {
     this._controller.supportsExecutionOrder = true;
     this._controller.executeHandler = this.executeCells.bind(this);
 
-    this.run("idle");
+    getPort({ port: 51205 }).then((port) => {
+      this._port = port;
+      this.run("idle");
+    });
   }
 
   private resolveClient(client: Client) {
@@ -92,10 +96,9 @@ export class NotebookController {
   }
 
   private async start() {
-    const port = await getPort({ port: 51205 });
     const process = spawn(
       "node_modules/.bin/vitale",
-      ["--port", String(port)],
+      ["--port", String(this._port)],
       {
         cwd: this._cwd,
         // env: {
@@ -113,7 +116,6 @@ export class NotebookController {
     process.on("spawn", () => {
       console.log(`vitale process spawned`);
       this._process = process;
-      this._port = port;
       this.run("started");
     });
     process.on("exit", () => {
