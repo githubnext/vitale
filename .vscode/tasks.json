@@ -6,8 +6,11 @@
     {
       "type": "npm",
       "script": "watch",
-      "problemMatcher": "$tsc-watch",
+      "problemMatcher": ["$tsup-esm-watch", "$tsup-dts-watch"],
       "isBackground": true,
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
       "presentation": {
         "reveal": "never"
       },

@@ -1,7 +1,10 @@
 {
-	"pnpm": {
-		"patchedDependencies": {
-			"vite@5.2.6": "patches/vite@5.2.6.patch"
-		}
-	}
+  "scripts": {
+    "watch": "pnpm -r run watch"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "vite@5.2.6": "patches/vite@5.2.6.patch"
+    }
+  }
 }
