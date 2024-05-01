@@ -77,7 +77,7 @@ export class NotebookController {
 
     this._controller.supportedLanguages = this.supportedLanguages;
     this._controller.supportsExecutionOrder = true;
-    this._controller.executeHandler = this.executeCells.bind(this);
+    this._controller.executeHandler = this.executeHandler.bind(this);
 
     getPort({ port: 51205 }).then((port) => {
       this._port = port;
@@ -288,12 +288,21 @@ export class NotebookController {
   }
 
   private setCellDirty(cell: vscode.NotebookCell, dirty: boolean) {
-    const metadata = { ...(cell.metadata ?? {}), dirty };
+    const metadata = { ...cell.metadata, dirty };
     const edit = new vscode.WorkspaceEdit();
     edit.set(cell.notebook.uri, [
       vscode.NotebookEdit.updateCellMetadata(cell.index, metadata),
     ]);
-    vscode.workspace.applyEdit(edit);
+    return vscode.workspace.applyEdit(edit);
+  }
+
+  private setCellDocDirty(cell: vscode.NotebookCell, docDirty: boolean) {
+    const metadata = { ...cell.metadata, docDirty };
+    const edit = new vscode.WorkspaceEdit();
+    edit.set(cell.notebook.uri, [
+      vscode.NotebookEdit.updateCellMetadata(cell.index, metadata),
+    ]);
+    return vscode.workspace.applyEdit(edit);
   }
 
   private async markCellsDirty(cells: { path: string; cellId: string }[]) {
@@ -310,11 +319,11 @@ export class NotebookController {
       }
     }
 
-    for (const cell of notebookCells) {
-      this.setCellDirty(cell, true);
-    }
+    await Promise.all(
+      notebookCells.map((cell) => this.setCellDirty(cell, true))
+    );
     if (getRerunCellsWhenDirty()) {
-      this.executeCells(notebookCells);
+      this.executeCells(notebookCells, false);
     }
   }
 
@@ -365,7 +374,14 @@ export class NotebookController {
     }
   }
 
-  private async executeCells(notebookCells: vscode.NotebookCell[]) {
+  private executeHandler(notebookCells: vscode.NotebookCell[]) {
+    this.executeCells(notebookCells);
+  }
+
+  private async executeCells(
+    notebookCells: vscode.NotebookCell[],
+    sendDirtyDocs = true
+  ) {
     if (notebookCells.length === 0) {
       return;
     }
@@ -373,8 +389,14 @@ export class NotebookController {
       path: cell.notebook.uri.fsPath,
       cellId: cell.metadata.id,
       language: cell.document.languageId,
-      code: cell.document.getText(),
+      code: sendDirtyDocs ? cell.document.getText() : undefined,
     }));
+
+    if (sendDirtyDocs) {
+      await Promise.all(
+        notebookCells.map((cell) => this.setCellDocDirty(cell, false))
+      );
+    }
 
     const client = await this.getClient();
     client.executeCells(cells);

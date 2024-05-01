@@ -20,7 +20,7 @@ export function makeHandleDidChangeNotebookDocument(
     for (const contentChange of e.contentChanges) {
       for (const cell of contentChange.addedCells) {
         const id = uniqueId(e.notebook);
-        const metadata = { ...(cell.metadata ?? {}), id };
+        const metadata = { ...cell.metadata, id };
         edits.push(NotebookEdit.updateCellMetadata(cell.index, metadata));
       }
       removedCells.push(...contentChange.removedCells);

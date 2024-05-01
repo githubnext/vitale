@@ -341,7 +341,7 @@ class VitaleDevServer {
       path: string;
       cellId: string;
       language: string;
-      code: string;
+      code?: string;
     }[]
   ) {
     let dirtyCells: { path: string; cellId: string }[] = [];
@@ -349,7 +349,9 @@ class VitaleDevServer {
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}-cellId=${cellId}.${ext}`;
-      this.cells.set(id, { cellId, code, language });
+      if (code) {
+        this.cells.set(id, { cellId, code, language });
+      }
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
       if (mod) {

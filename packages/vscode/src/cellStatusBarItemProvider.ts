@@ -17,12 +17,9 @@ export class NotebookCellStatusBarItemProvider
     };
     items.push(idItem);
 
-    // TODO(jaked)
-    // provideCellStatusBarItems is called on cell edits
-    // but the cell.document.dirty flag is always false
-    if (cell.metadata.dirty || cell.document.isDirty) {
+    if (cell.metadata.dirty || cell.metadata.docDirty) {
       const dirtyItem = new vscode.NotebookCellStatusBarItem(
-        "$(circle-filled)",
+        cell.metadata.docDirty ? "$(circle-filled)" : "$(circle-outline)",
         vscode.NotebookCellStatusBarAlignment.Right
       );
       // TODO(jaked)

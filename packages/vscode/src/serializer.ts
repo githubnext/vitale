@@ -3,7 +3,8 @@ import JSON5 from "json5";
 
 interface NotebookCellMetadata {
   id: string;
-  dirty: boolean;
+  dirty: boolean; // a dependency of cell has changed
+  docDirty: boolean; // cell document has changed
 }
 
 interface NotebookCell {
@@ -59,6 +60,7 @@ export class NotebookSerializer implements vscode.NotebookSerializer {
     for (const cell of data.cells) {
       if (cell.metadata) {
         delete cell.metadata.dirty;
+        delete cell.metadata.docDirty;
       }
       contents.cells.push({
         kind: cell.kind,
