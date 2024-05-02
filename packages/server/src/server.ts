@@ -298,18 +298,18 @@ class VitaleDevServer {
 
   private invalidateModule(
     id: string,
-    dirtyCells: { path: string; cellId: string }[]
+    dirtyCells: { path: string; cellId: string; ext: string }[]
   ) {
     const mod = this.viteRuntime.moduleCache.get(id);
     this.viteRuntime.moduleCache.delete(id);
 
     const match = cellIdRegex.exec(id);
     if (match) {
-      const [_, path, cellId] = match;
+      const [_, path, cellId, ext] = match;
       if (
         !dirtyCells.some((cell) => cell.path === path && cell.cellId === cellId)
       ) {
-        dirtyCells.push({ path, cellId });
+        dirtyCells.push({ path, cellId, ext });
       }
     }
 
@@ -331,20 +331,21 @@ class VitaleDevServer {
   }
 
   private invalidateModuleAndDirty(id: string) {
-    const cells: { path: string; cellId: string }[] = [];
+    const cells: { path: string; cellId: string; ext: string }[] = [];
     this.invalidateModule(id, cells);
     this.markCellsDirty(cells);
   }
 
-  private executeCellsRPC(
+  private async executeCellsRPC(
     cells: {
       path: string;
       cellId: string;
       language: string;
       code?: string;
-    }[]
+    }[],
+    executeDirtyCells: boolean
   ) {
-    let dirtyCells: { path: string; cellId: string }[] = [];
+    let dirtyCells: { path: string; cellId: string; ext: string }[] = [];
 
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
@@ -362,15 +363,6 @@ class VitaleDevServer {
       this.invalidateModule(id, dirtyCells);
     }
 
-    for (const { path, cellId, language } of cells) {
-      const ext = extOfLanguage(language);
-      const id = `${path}-cellId=${cellId}.${ext}`;
-      this.executeCell(id, path, cellId).catch((e) => {
-        console.error(e);
-      });
-    }
-
-    // don't mark cells dirty if they were just executed
     dirtyCells = dirtyCells.filter(
       (dirtyCell) =>
         !cells.some(
@@ -378,7 +370,28 @@ class VitaleDevServer {
             cell.path === dirtyCell.path && cell.cellId === dirtyCell.cellId
         )
     );
-    this.markCellsDirty(dirtyCells);
+
+    const cellsToExecute = [
+      ...cells.map(({ path, cellId, language }) => ({
+        path,
+        cellId,
+        ext: extOfLanguage(language),
+      })),
+      ...(executeDirtyCells ? dirtyCells : []),
+    ];
+
+    await Promise.all(
+      cellsToExecute.map(async ({ path, cellId, ext }) => {
+        const id = `${path}-cellId=${cellId}.${ext}`;
+        return this.executeCell(id, path, cellId).catch((e) => {
+          console.error(e);
+        });
+      })
+    );
+
+    if (!executeDirtyCells) {
+      this.markCellsDirty(dirtyCells);
+    }
   }
 
   private removeCellsRPC(
@@ -388,7 +401,7 @@ class VitaleDevServer {
       language: string;
     }[]
   ) {
-    let dirtyCells: { path: string; cellId: string }[] = [];
+    let dirtyCells: { path: string; cellId: string; ext: string }[] = [];
 
     for (const { path, cellId, language } of cells) {
       const ext = extOfLanguage(language);
@@ -423,9 +436,9 @@ class VitaleDevServer {
           console.log("ping");
           return "pong";
         },
-        async executeCells(cells) {
+        async executeCells(cells, executeDirtyCells) {
           try {
-            return self.executeCellsRPC(cells);
+            return self.executeCellsRPC(cells, executeDirtyCells);
           } catch (e) {
             console.error(e);
           }

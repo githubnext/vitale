@@ -3,6 +3,7 @@ import { NotebookSerializer } from "./serializer";
 import { NotebookController } from "./controller";
 import { NotebookCellStatusBarItemProvider } from "./cellStatusBarItemProvider";
 import { makeHandleDidChangeNotebookDocument } from "./handleDidChangeNotebookDocument";
+import { makeHandleDidChangeNotebookEditorSelection } from "./handleDidChangeNotebookEditorSelection";
 import { handleDidChangeTextDocument } from "./handleDidChangeTextDocument";
 
 export function activate(context: vscode.ExtensionContext) {
@@ -32,6 +33,9 @@ export function activate(context: vscode.ExtensionContext) {
       makeHandleDidChangeNotebookDocument(controller)
     ),
     vscode.workspace.onDidChangeTextDocument(handleDidChangeTextDocument),
+    vscode.window.onDidChangeNotebookEditorSelection(
+      makeHandleDidChangeNotebookEditorSelection(controller)
+    ),
     controller,
     vscode.notebooks.registerNotebookCellStatusBarItemProvider(
       "vitale-notebook",

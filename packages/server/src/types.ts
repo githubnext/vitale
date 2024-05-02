@@ -26,7 +26,8 @@ export type ServerFunctions = {
       cellId: string;
       language: string;
       code?: string;
-    }[]
+    }[],
+    executeDirtyCells: boolean
   ) => void;
 };
 

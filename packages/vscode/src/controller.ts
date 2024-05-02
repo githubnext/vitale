@@ -21,7 +21,7 @@ function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   );
 }
 
-function getRerunCellsWhenDirty() {
+export function getRerunCellsWhenDirty() {
   const config = vscode.workspace.getConfiguration("vitale");
   return config.get("rerunCellsWhenDirty", true);
 }
@@ -241,7 +241,9 @@ export class NotebookController {
     const notebook = await vscode.workspace.openNotebookDocument(
       vscode.Uri.parse(notebookUri)
     );
-    const cells = notebook.getCells().filter((cell) => cell.metadata.dirty);
+    const cells = notebook
+      .getCells()
+      .filter((cell) => cell.metadata.dirty || cell.metadata.docDirty);
     this.executeCells(cells);
   }
 
@@ -322,9 +324,6 @@ export class NotebookController {
     await Promise.all(
       notebookCells.map((cell) => this.setCellDirty(cell, true))
     );
-    if (getRerunCellsWhenDirty()) {
-      this.executeCells(notebookCells, false);
-    }
   }
 
   private async startCellExecution(path: string, id: string) {
@@ -378,10 +377,7 @@ export class NotebookController {
     this.executeCells(notebookCells);
   }
 
-  private async executeCells(
-    notebookCells: vscode.NotebookCell[],
-    sendDirtyDocs = true
-  ) {
+  private async executeCells(notebookCells: vscode.NotebookCell[]) {
     if (notebookCells.length === 0) {
       return;
     }
@@ -389,17 +385,15 @@ export class NotebookController {
       path: cell.notebook.uri.fsPath,
       cellId: cell.metadata.id,
       language: cell.document.languageId,
-      code: sendDirtyDocs ? cell.document.getText() : undefined,
+      code: cell.document.getText(),
     }));
 
-    if (sendDirtyDocs) {
-      await Promise.all(
-        notebookCells.map((cell) => this.setCellDocDirty(cell, false))
-      );
-    }
+    await Promise.all(
+      notebookCells.map((cell) => this.setCellDocDirty(cell, false))
+    );
 
     const client = await this.getClient();
-    client.executeCells(cells);
+    client.executeCells(cells, getRerunCellsWhenDirty());
   }
 
   async removeCells(notebookCells: vscode.NotebookCell[]) {
