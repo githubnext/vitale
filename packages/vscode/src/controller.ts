@@ -11,6 +11,7 @@ import { type BirpcReturn } from "birpc";
 import { createBirpc } from "birpc";
 import kill from "tree-kill";
 import getPort from "get-port";
+import { log } from "./log";
 
 function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   return new vscode.NotebookCellOutput(
@@ -108,18 +109,18 @@ export class NotebookController {
       }
     );
     process.stdout?.on("data", (data) => {
-      console.log(data.toString());
+      log.info(data.toString());
     });
     process.stderr?.on("data", (data) => {
-      console.error(data.toString());
+      log.error(data.toString());
     });
     process.on("spawn", () => {
-      console.log(`vitale process spawned`);
+      log.info(`vitale process spawned`);
       this._process = process;
       this.run("started");
     });
     process.on("exit", () => {
-      console.log(`vitale process exited`);
+      log.info(`vitale process exited`);
       this.run("idle");
     });
     process.on("error", (error) => {
@@ -153,7 +154,7 @@ export class NotebookController {
         ws.close();
         return;
       }
-      console.log(`ws open`);
+      log.info(`ws open`);
       this._websocket = ws;
       this.run("connected");
     });
@@ -162,15 +163,15 @@ export class NotebookController {
       if (this._websocket && this._websocket !== ws) {
         return;
       }
-      console.log(`ws error`);
-      console.error(err);
+      log.info(`ws error`);
+      log.error(err);
     });
 
     ws.on("close", () => {
       if (this._websocket && this._websocket !== ws) {
         return;
       }
-      console.log(`ws close`);
+      log.info(`ws close`);
       setTimeout(() => {
         if (this._state === "connecting" || this._state === "connected") {
           this.run("started");
@@ -226,7 +227,7 @@ export class NotebookController {
         throw new Error(`unexpected state: ${state}`);
     }
 
-    console.log(`state: ${state}`);
+    log.info(`state: ${state}`);
   }
 
   restartKernel() {
@@ -332,16 +333,24 @@ export class NotebookController {
     );
     const cell = notebook.getCells().find((cell) => cell.metadata.id === id);
     if (cell) {
-      const execution = this._controller.createNotebookCellExecution(cell);
-      execution.token.onCancellationRequested(() => {
-        this.cancelCellExecution(path, id);
-      });
-
-      execution.executionOrder = ++this._executionOrder;
-      execution.start(Date.now());
-
       const key = `${path}-${id}`;
-      this._executions.set(key, execution);
+      if (this._executions.has(key)) {
+        // this can happen when the user edits the cell
+        // thens executes it
+        // because handleDidChangeNotebookEditorSelection fires
+        // and calls runDirty
+        log.info(`already executing ${key}`);
+      } else {
+        const execution = this._controller.createNotebookCellExecution(cell);
+        execution.token.onCancellationRequested(() => {
+          this.cancelCellExecution(path, id);
+        });
+
+        execution.executionOrder = ++this._executionOrder;
+        execution.start(Date.now());
+
+        this._executions.set(key, execution);
+      }
     }
   }
 
