@@ -5,6 +5,7 @@ interface NotebookCellMetadata {
   id: string;
   dirty: boolean; // a dependency of cell has changed
   docDirty: boolean; // cell document has changed
+  paused: boolean;
 }
 
 interface NotebookCell {

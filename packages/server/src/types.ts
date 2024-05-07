@@ -27,13 +27,18 @@ export type ServerFunctions = {
       language: string;
       code?: string;
     }[],
+    force: boolean,
     executeDirtyCells: boolean
   ) => void;
 };
 
 export type ClientFunctions = {
   markCellsDirty: (cells: { path: string; cellId: string }[]) => void;
-  startCellExecution: (path: string, cellId: string) => void;
+  startCellExecution: (
+    path: string,
+    cellId: string,
+    force: boolean
+  ) => Promise<boolean>;
   endCellExecution: (
     path: string,
     cellId: string,

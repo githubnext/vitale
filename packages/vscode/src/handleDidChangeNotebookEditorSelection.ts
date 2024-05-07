@@ -11,8 +11,15 @@ export function makeHandleDidChangeNotebookEditorSelection(
     // so instead we run when the notebook selection changes
     // (i.e. you switch to a different cell)
     // but unfortunately this doesn't fire when you click outside any cell
-    if (getRerunCellsWhenDirty()) {
-      controller.runDirty(e.notebookEditor.notebook.uri.toString());
-    }
+
+    // this event fires when you click on cell status bar items
+    // so wait a bit to let the click handler fire (and possibly update metadata)
+    // before running dirty cells
+    // TODO(jaked) ugh
+    setTimeout(() => {
+      if (getRerunCellsWhenDirty()) {
+        controller.runDirty(e.notebookEditor.notebook.uri.toString());
+      }
+    }, 100);
   };
 }

@@ -27,6 +27,19 @@ export class NotebookCellStatusBarItemProvider
       dirtyItem.command = "notebook.cell.execute";
       items.push(dirtyItem);
     }
+
+    const pauseItem = new vscode.NotebookCellStatusBarItem(
+      cell.metadata.paused ? "$(debug-start)" : "$(debug-pause)",
+      vscode.NotebookCellStatusBarAlignment.Right
+    );
+    pauseItem.tooltip = cell.metadata.paused ? "Unpause" : "Pause";
+    pauseItem.command = {
+      title: "Pause",
+      command: "vitale.pauseCell",
+      arguments: [cell.notebook.uri, cell.metadata.id],
+    };
+    items.push(pauseItem);
+
     return items;
   }
 }

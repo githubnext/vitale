@@ -207,15 +207,25 @@ class VitaleDevServer {
     });
   }
 
-  private async executeCell(id: string, path: string, cellId: string) {
+  private async executeCell(
+    id: string,
+    path: string,
+    cellId: string,
+    force: boolean
+  ) {
     // TODO(jaked)
     // await so client finishes startCellExecution before we send endCellExecution
     // would be better for client to lock around startCellExecution
-    await Promise.all(
-      Array.from(this.clients.values()).map((client) =>
-        client.startCellExecution(path, cellId)
+    const startOK = (
+      await Promise.all(
+        Array.from(this.clients.values()).map((client) =>
+          client.startCellExecution(path, cellId, force)
+        )
       )
-    );
+    ).every((ok) => ok);
+    if (!startOK) {
+      return false;
+    }
 
     let data;
     let mime;
@@ -289,11 +299,12 @@ class VitaleDevServer {
           : [{ data: [...Buffer.from(data, "utf8").values()], mime }],
     };
 
-    return await Promise.all(
+    await Promise.all(
       Array.from(this.clients.values()).map((client) =>
         client.endCellExecution(path, cellId, cellOutput)
       )
     );
+    return true;
   }
 
   private invalidateModule(
@@ -343,6 +354,7 @@ class VitaleDevServer {
       language: string;
       code?: string;
     }[],
+    force: boolean,
     executeDirtyCells: boolean
   ) {
     let dirtyCells: { path: string; cellId: string; ext: string }[] = [];
@@ -376,22 +388,23 @@ class VitaleDevServer {
         path,
         cellId,
         ext: extOfLanguage(language),
+        force,
       })),
-      ...(executeDirtyCells ? dirtyCells : []),
+      ...(executeDirtyCells
+        ? dirtyCells.map((cell) => ({ ...cell, force: false }))
+        : []),
     ];
 
-    await Promise.all(
-      cellsToExecute.map(async ({ path, cellId, ext }) => {
-        const id = `${path}-cellId=${cellId}.${ext}`;
-        return this.executeCell(id, path, cellId).catch((e) => {
-          console.error(e);
-        });
-      })
+    const executed = await Promise.all(
+      cellsToExecute.map(({ path, cellId, ext, force }) =>
+        this.executeCell(`${path}-cellId=${cellId}.${ext}`, path, cellId, force)
+      )
     );
 
-    if (!executeDirtyCells) {
-      this.markCellsDirty(dirtyCells);
-    }
+    const cellsToMarkDirty = cellsToExecute.filter(
+      ({ force }, i) => !force && !executed[i]
+    );
+    this.markCellsDirty(cellsToMarkDirty);
   }
 
   private removeCellsRPC(
@@ -436,9 +449,9 @@ class VitaleDevServer {
           console.log("ping");
           return "pong";
         },
-        async executeCells(cells, executeDirtyCells) {
+        async executeCells(cells, force, executeDirtyCells) {
           try {
-            return self.executeCellsRPC(cells, executeDirtyCells);
+            return self.executeCellsRPC(cells, force, executeDirtyCells);
           } catch (e) {
             console.error(e);
           }

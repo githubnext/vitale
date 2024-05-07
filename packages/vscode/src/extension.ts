@@ -24,6 +24,28 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("vitale.copyToClipboard", (s: string) => {
       vscode.env.clipboard.writeText(s);
     }),
+    vscode.commands.registerCommand(
+      "vitale.pauseCell",
+      async (notebookUri: vscode.Uri, cellId: string) => {
+        const notebook = await vscode.workspace.openNotebookDocument(
+          notebookUri
+        );
+        const cell = notebook
+          .getCells()
+          .find((cell) => cell.metadata.id === cellId);
+        if (!cell) {
+          return false;
+        }
+
+        const paused = !cell.metadata.paused;
+        const metadata = { ...cell.metadata, paused };
+        const edit = new vscode.WorkspaceEdit();
+        edit.set(notebookUri, [
+          vscode.NotebookEdit.updateCellMetadata(cell.index, metadata),
+        ]);
+        return vscode.workspace.applyEdit(edit);
+      }
+    ),
     vscode.workspace.registerNotebookSerializer(
       "vitale-notebook",
       new NotebookSerializer(),

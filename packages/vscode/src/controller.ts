@@ -327,31 +327,36 @@ export class NotebookController {
     );
   }
 
-  private async startCellExecution(path: string, id: string) {
+  private async startCellExecution(path: string, id: string, force: boolean) {
     const notebook = await vscode.workspace.openNotebookDocument(
       vscode.Uri.file(path)
     );
     const cell = notebook.getCells().find((cell) => cell.metadata.id === id);
-    if (cell) {
-      const key = `${path}-${id}`;
-      if (this._executions.has(key)) {
-        // this can happen when the user edits the cell
-        // thens executes it
-        // because handleDidChangeNotebookEditorSelection fires
-        // and calls runDirty
-        log.info(`already executing ${key}`);
-      } else {
-        const execution = this._controller.createNotebookCellExecution(cell);
-        execution.token.onCancellationRequested(() => {
-          this.cancelCellExecution(path, id);
-        });
 
-        execution.executionOrder = ++this._executionOrder;
-        execution.start(Date.now());
-
-        this._executions.set(key, execution);
-      }
+    if (!cell || (cell.metadata.paused && !force)) {
+      return false;
     }
+
+    const key = `${path}-${id}`;
+    if (this._executions.has(key)) {
+      // this can happen when the user edits the cell
+      // thens executes it
+      // because handleDidChangeNotebookEditorSelection fires
+      // and calls runDirty
+      log.info(`already executing ${key}`);
+      return false;
+    }
+
+    const execution = this._controller.createNotebookCellExecution(cell);
+    execution.token.onCancellationRequested(() => {
+      this.cancelCellExecution(path, id);
+    });
+
+    execution.executionOrder = ++this._executionOrder;
+    execution.start(Date.now());
+
+    this._executions.set(key, execution);
+    return true;
   }
 
   private cancelCellExecution(path: string, id: string) {
@@ -383,10 +388,13 @@ export class NotebookController {
   }
 
   private executeHandler(notebookCells: vscode.NotebookCell[]) {
-    this.executeCells(notebookCells);
+    this.executeCells(notebookCells, true);
   }
 
-  private async executeCells(notebookCells: vscode.NotebookCell[]) {
+  private async executeCells(
+    notebookCells: vscode.NotebookCell[],
+    force: boolean = false
+  ) {
     if (notebookCells.length === 0) {
       return;
     }
@@ -402,7 +410,7 @@ export class NotebookController {
     );
 
     const client = await this.getClient();
-    client.executeCells(cells, getRerunCellsWhenDirty());
+    client.executeCells(cells, force, getRerunCellsWhenDirty());
   }
 
   async removeCells(notebookCells: vscode.NotebookCell[]) {
