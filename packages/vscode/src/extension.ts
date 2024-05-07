@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { ViewColumn } from "vscode";
 import { NotebookSerializer } from "./serializer";
 import { NotebookController } from "./controller";
 import { NotebookCellStatusBarItemProvider } from "./cellStatusBarItemProvider";
@@ -21,6 +22,19 @@ export function activate(context: vscode.ExtensionContext) {
         controller.runDirty(ctx.notebookEditor.notebookUri);
       }
     ),
+    vscode.commands.registerCommand("vitale.openREPL", async () => {
+      await vscode.commands.executeCommand(
+        "interactive.open",
+        { viewColumn: ViewColumn.Active, preserveFocus: false },
+        undefined,
+        NotebookController.id + "-repl",
+        "Vitale REPL"
+      );
+      await vscode.commands.executeCommand("notebook.selectKernel", {
+        id: NotebookController.id + "-repl",
+        extension: "githubnext.vitale-vscode",
+      });
+    }),
     vscode.commands.registerCommand("vitale.copyToClipboard", (s: string) => {
       vscode.env.clipboard.writeText(s);
     }),

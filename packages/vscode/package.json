@@ -1,5 +1,6 @@
 {
   "name": "vitale-vscode",
+  "publisher": "githubnext",
   "displayName": "Vitale",
   "description": "",
   "version": "0.0.10",
@@ -29,6 +30,12 @@
         "command": "vitale.runDirty",
         "category": "Vitale",
         "icon": "$(run-all)"
+      },
+      {
+        "title": "Open REPL",
+        "command": "vitale.openREPL",
+        "category": "Vitale",
+        "icon": "$(terminal)"
       }
     ],
     "menus": {

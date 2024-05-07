@@ -5,11 +5,13 @@ export default defineConfig([
     entry: ["./src/extension.ts"],
     external: ["vscode"],
     format: "cjs",
+    sourcemap: true,
   },
   {
     entry: ["./src/jsonRenderer.tsx"],
     external: ["vscode"],
     format: ["esm"],
+    sourcemap: true,
     splitting: false,
     esbuildOptions(options) {
       options.define = {
@@ -21,6 +23,7 @@ export default defineConfig([
     entry: ["./src/vitaleRenderer.tsx"],
     external: ["vscode"],
     format: ["esm"],
+    sourcemap: true,
     splitting: false,
     esbuildOptions(options) {
       options.define = {

@@ -44,7 +44,7 @@ const RECONNECT_TRIES = 10;
 const RECONNECT_INTERVAL = 1000;
 
 export class NotebookController {
-  readonly id = "vitale-notebook-kernel";
+  static readonly id = "vitale-notebook-kernel";
   public readonly label = "Vitale Notebook Kernel";
   readonly supportedLanguages = [
     "typescriptreact",
@@ -55,6 +55,7 @@ export class NotebookController {
 
   private _executionOrder = 0;
   private readonly _controller: vscode.NotebookController;
+  private readonly _replController: vscode.NotebookController;
 
   private _state: State = "need-port";
   private _tries: number = RECONNECT_TRIES;
@@ -71,7 +72,13 @@ export class NotebookController {
 
   constructor(private _cwd: undefined | string) {
     this._controller = vscode.notebooks.createNotebookController(
-      this.id,
+      NotebookController.id,
+      "vitale-notebook",
+      this.label
+    );
+
+    this._replController = vscode.notebooks.createNotebookController(
+      NotebookController.id + "-repl",
       "vitale-notebook",
       this.label
     );
@@ -80,10 +87,16 @@ export class NotebookController {
     this._controller.supportsExecutionOrder = true;
     this._controller.executeHandler = this.executeHandler.bind(this);
 
+    this._replController.supportedLanguages = this.supportedLanguages;
+    this._replController.supportsExecutionOrder = true;
+    this._replController.executeHandler = this._controller.executeHandler;
+
     getPort({ port: 51205 }).then((port) => {
       this._port = port;
       this.run("idle");
     });
+
+    console.log(`controller constructed`);
   }
 
   private resolveClient(client: Client) {
