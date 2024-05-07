@@ -100,12 +100,23 @@ function makeHtmlSource(url: string) {
 class VitaleDevServer {
   static async construct(options: Options) {
     const cells: Map<string, Cell> = new Map();
+
+    let origin;
+    const codespaceName = process.env.CODESPACE_NAME;
+    const codespaceDomain =
+      process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN;
+    if (codespaceName && codespaceDomain) {
+      origin = `https://${codespaceName}-${options.port}.${codespaceDomain}`;
+    } else {
+      origin = `http://127.0.0.1:${options.port}`;
+    }
+
     const viteServer = await createViteServer({
       server: {
         port: options.port,
         host: "127.0.0.1",
         strictPort: true,
-        origin: `http://127.0.0.1:${options.port}`,
+        origin,
       },
       plugins: [
         {
