@@ -97,9 +97,55 @@ function makeHtmlSource(url: string) {
 `;
 }
 
+function getCellById(cellsByPath: Map<string, Map<string, Cell>>, id: string) {
+  const match = cellIdRegex.exec(id);
+  if (match) {
+    const [_, path, cellId, ext] = match;
+    const cells = cellsByPath.get(path);
+    if (cells) {
+      const cell = cells.get(cellId);
+      if (cell && extOfLanguage(cell.language) === ext) {
+        return cell;
+      }
+    }
+  }
+  return null;
+}
+
+function setCellById(
+  cellsByPath: Map<string, Map<string, Cell>>,
+  id: string,
+  cell: Cell
+) {
+  const match = cellIdRegex.exec(id);
+  if (match) {
+    const [_, path, cellId] = match;
+    let cells = cellsByPath.get(path);
+    if (!cells) {
+      cells = new Map();
+      cellsByPath.set(path, cells);
+    }
+    cells.set(cellId, cell);
+  }
+}
+
+function deleteCellById(
+  cellsByPath: Map<string, Map<string, Cell>>,
+  id: string
+) {
+  const match = cellIdRegex.exec(id);
+  if (match) {
+    const [_, path, cellId] = match;
+    const cells = cellsByPath.get(path);
+    if (cells) {
+      cells.delete(cellId);
+    }
+  }
+}
+
 class VitaleDevServer {
   static async construct(options: Options) {
-    const cells: Map<string, Cell> = new Map();
+    const cellsByPath: Map<string, Map<string, Cell>> = new Map();
 
     let origin;
     const codespaceName = process.env.CODESPACE_NAME;
@@ -125,15 +171,15 @@ class VitaleDevServer {
             const id = source.startsWith(viteServer.config.root)
               ? source
               : Path.join(viteServer.config.root, source);
-            return cells.has(id) ? id : null;
+            const cell = getCellById(cellsByPath, id);
+            return cell ? id : null;
           },
           load(id) {
-            const cell = cells.get(id);
+            const cell = getCellById(cellsByPath, id);
             if (cell && cell.sourceDescription) {
               return cell.sourceDescription.code;
-            } else {
-              return null;
             }
+            return null;
           },
 
           configureServer(server) {
@@ -174,7 +220,7 @@ class VitaleDevServer {
       ],
     });
 
-    return new VitaleDevServer(viteServer, cells);
+    return new VitaleDevServer(viteServer, cellsByPath);
   }
 
   private viteServer: ViteDevServer;
@@ -183,11 +229,14 @@ class VitaleDevServer {
     WebSocket,
     BirpcReturn<ClientFunctions, ServerFunctions>
   > = new Map();
-  private cells: Map<string, Cell>;
+  private cellsByPath: Map<string, Map<string, Cell>>;
 
-  private constructor(viteServer: ViteDevServer, cells: Map<string, Cell>) {
+  private constructor(
+    viteServer: ViteDevServer,
+    cellsByPath: Map<string, Map<string, Cell>>
+  ) {
     this.viteServer = viteServer;
-    this.cells = cells;
+    this.cellsByPath = cellsByPath;
 
     this.viteRuntime = new ViteRuntime(
       {
@@ -242,16 +291,17 @@ class VitaleDevServer {
     let mime;
 
     try {
-      const cell = this.cells.get(id);
+      const cell = getCellById(this.cellsByPath, id);
       if (!cell) throw new Error(`cell not found: ${id}`);
 
       if (!cell.sourceDescription) {
+        const [_, path] = cellIdRegex.exec(id)!;
         cell.sourceDescription = rewrite(
           cell.code,
           cell.language,
           id,
           cell.cellId,
-          this.cells
+          this.cellsByPath.get(path)!
         );
       }
 
@@ -374,7 +424,7 @@ class VitaleDevServer {
       const ext = extOfLanguage(language);
       const id = `${path}-cellId=${cellId}.${ext}`;
       if (code) {
-        this.cells.set(id, { cellId, code, language });
+        setCellById(this.cellsByPath, id, { cellId, code, language });
       }
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
@@ -430,7 +480,7 @@ class VitaleDevServer {
     for (const { path, cellId, language } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}-cellId=${cellId}.${ext}`;
-      this.cells.delete(id);
+      deleteCellById(this.cellsByPath, id);
 
       const mod = this.viteServer.moduleGraph.getModuleById(id);
       if (mod) {
