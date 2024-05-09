@@ -176,10 +176,22 @@ class VitaleDevServer {
           },
           load(id) {
             const cell = getCellById(cellsByPath, id);
-            if (cell && cell.sourceDescription) {
-              return cell.sourceDescription.code;
+            if (!cell) {
+              return null;
             }
-            return null;
+
+            if (!cell.sourceDescription) {
+              const [_, path] = cellIdRegex.exec(id)!;
+              cell.sourceDescription = rewrite(
+                cell.code,
+                cell.language,
+                id,
+                cell.cellId,
+                cellsByPath.get(path)!
+              );
+            }
+
+            return cell.sourceDescription.code;
           },
 
           configureServer(server) {
@@ -189,7 +201,9 @@ class VitaleDevServer {
               if (req.url) {
                 const htmlQuery = htmlRE.test(req.url);
                 const url = removeHtmlQuery(removeTimestampQuery(req.url));
-                if (cellIdRegex.test(url)) {
+                if (
+                  getCellById(cellsByPath, Path.join(server.config.root, url))
+                ) {
                   if (htmlQuery) {
                     const html = await server.transformIndexHtml(
                       url,
