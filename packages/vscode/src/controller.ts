@@ -244,7 +244,11 @@ export class NotebookController {
     );
     const cells = notebook
       .getCells()
-      .filter((cell) => cell.metadata.dirty || cell.metadata.docDirty);
+      .filter(
+        (cell) =>
+          (cell.metadata.dirty || cell.metadata.docDirty) &&
+          !cell.metadata.paused
+      );
     this.executeCells(cells);
   }
 
