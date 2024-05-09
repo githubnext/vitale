@@ -18,7 +18,7 @@ export function makeHandleDidChangeNotebookEditorSelection(
     // TODO(jaked) ugh
     setTimeout(() => {
       if (getRerunCellsWhenDirty()) {
-        controller.runDirty(e.notebookEditor.notebook.uri.toString());
+        controller.runDirty(e.notebookEditor.notebook.uri.toString(), false);
       }
     }, 100);
   };

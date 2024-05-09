@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "vitale.runDirty",
       (ctx: { notebookEditor: { notebookUri: string } }) => {
-        controller.runDirty(ctx.notebookEditor.notebookUri);
+        controller.runDirty(ctx.notebookEditor.notebookUri, true);
       }
     ),
     vscode.commands.registerCommand("vitale.copyToClipboard", (s: string) => {

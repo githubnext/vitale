@@ -238,7 +238,7 @@ export class NotebookController {
     }
   }
 
-  async runDirty(notebookUri: string) {
+  async runDirty(notebookUri: string, force: boolean) {
     const notebook = await vscode.workspace.openNotebookDocument(
       vscode.Uri.parse(notebookUri)
     );
@@ -247,9 +247,9 @@ export class NotebookController {
       .filter(
         (cell) =>
           (cell.metadata.dirty || cell.metadata.docDirty) &&
-          !cell.metadata.paused
+          (!cell.metadata.paused || force)
       );
-    this.executeCells(cells);
+    this.executeCells(cells, force);
   }
 
   private makeClientPromise() {
