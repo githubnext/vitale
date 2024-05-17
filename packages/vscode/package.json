@@ -101,7 +101,7 @@
     "@types/node": "18.x",
     "@types/react": "^18.2.73",
     "@types/react-dom": "^18.2.23",
-    "@types/vscode": "^1.87.0",
+    "@types/vscode": "1.84.2",
     "@types/vscode-notebook-renderer": "^1.72.3",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^7.4.0",

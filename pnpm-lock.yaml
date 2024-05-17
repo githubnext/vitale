@@ -89,8 +89,8 @@ importers:
         specifier: ^18.2.23
         version: 18.2.23
       '@types/vscode':
-        specifier: ^1.87.0
-        version: 1.87.0
+        specifier: 1.84.2
+        version: 1.84.2
       '@types/vscode-notebook-renderer':
         specifier: ^1.72.3
         version: 1.72.3
@@ -988,8 +988,8 @@ packages:
     resolution: {integrity: sha512-MfmEI3A2McbUV2WaijoTgLOAs9chwHN4WmqOedl3jdtlbzJBWIQ9ZFmQdzPa3lYr5j8DJhRg3KB5AIM/BBfg9Q==}
     dev: true
 
-  /@types/vscode@1.87.0:
-    resolution: {integrity: sha512-y3yYJV2esWr8LNjp3VNbSMWG7Y43jC8pCldG8YwiHGAQbsymkkMMt0aDT1xZIOFM2eFcNiUc+dJMx1+Z0UT8fg==}
+  /@types/vscode@1.84.2:
+    resolution: {integrity: sha512-LCe1FvCDMJKkPdLVGYhP0HRJ1PDop2gRVm/zFHiOKwYLBRS7vEV3uOOUId4HMV+L1IxqyS+IZXMmlSMRbZGIAw==}
     dev: true
 
   /@types/ws@8.5.10:
