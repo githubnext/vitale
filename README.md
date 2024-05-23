@@ -18,7 +18,17 @@ and hot-reloading.
 
     - `pnpm add -D @githubnext/vitale` (or equivalent in `npm` or `yarn` etc.)
 
-The details of the RPC protocol between extension and server change frequently, so you should use matching versions.
+      The details of the RPC protocol between extension and server change frequently,
+      so you should use matching versions.
+
+3.  (Optional) Install the `@githubnext/typescript` package in your project:
+
+    - `pnpm add -D typescript@npm:@githubnext/typescript`
+
+      This is a patched version of of TypeScript 5.4.5 which hacks in support
+      for the pathnames that VS Code uses for notebook cells (with stock
+      TypeScript, `tsserver` can't find the `tsconfig.json` and can't find
+      referenced project files, so you get a lot of spurious squiggles).
 
 ## Getting started
 
@@ -36,7 +46,8 @@ The output of a cell is the value of the expression; if the expression is a
 promise, it will be `await`ed automatically; if there's no trailing expression
 or the expression is undefined there's no output.
 
-Ordinarily cells are executed server-side in a Node environment, but see below about client-side rendering.
+Ordinarily cells are executed server-side in a Node environment, but see below
+about client-side rendering.
 
 ## Defining and referencing variables
 
@@ -85,11 +96,11 @@ Object values are returned with MIME type `application/json` and rendered using
 and rendered as HTML. `SVGElement` values are returned with MIME type
 `image/svg+xml` and rendered as SVG.
 
-To override the MIME type, return an object of type `{
-data: string, mime: string }` (currently there's no way to return binary data).
-VS Code has several built-in renderers (see
-[Rich Output](https://code.visualstudio.com/api/extension-guides/notebook#rich-output)) and you
-can install others as extensions.
+To override the MIME type, return an object of type `{ data: string, mime:
+string }` (currently there's no way to return binary data). VS Code has several
+built-in renderers (see [Rich
+Output](https://code.visualstudio.com/api/extension-guides/notebook#rich-output))
+and you can install others as extensions.
 
 To make `HTMLElement` / `SVGElement` values, you can use `jsdom` or a similar
 library; for example, to render an SVG from [Observable
@@ -143,9 +154,6 @@ tried it.
 
 ## Known issues
 
-- TypeScript checking in notebook cells doesn't work very well: it doesn't use
-  the project's `tsconfig.json`, it can't find project files, and it doesn't
-  handle cell dependencies correctly
 - cancelling an execution only cancels it client-side; if you get your server
   stuck you can restart it with `Vitale: Restart Kernel`
 - rerunning a React cell doesn't hot reload; the component is remounted and
