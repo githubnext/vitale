@@ -8,9 +8,45 @@ import { createServer as createViteServer, send } from "vite";
 import { ESModulesRunner, ViteRuntime } from "vite/runtime";
 import { WebSocketServer, type WebSocket } from "ws";
 import rewrite from "./rewrite";
-import type { CellOutput, ClientFunctions, ServerFunctions } from "./types";
+import type {
+  CellOutput,
+  CellOutputItem,
+  ClientFunctions,
+  ServerFunctions,
+} from "./types";
 import { Cell, Options } from "./types";
 import { handleHMRUpdate } from "./hmr";
+import * as Domain from "node:domain";
+
+const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+type DomainWithWriters = Domain.Domain & {
+  stdoutWrite?: (chunk: Buffer) => void;
+  stderrWrite?: (chunk: Buffer) => void;
+};
+
+const processWithDomain: typeof process & {
+  domain?: DomainWithWriters;
+} = process;
+
+process.stdout.write = (chunk, ...args) => {
+  if (processWithDomain.domain && processWithDomain.domain.stdoutWrite) {
+    // @ts-ignore
+    processWithDomain.domain.stdoutWrite(Buffer.from(chunk));
+  }
+  // @ts-ignore
+  return originalStdoutWrite(chunk, ...args);
+};
+
+process.stderr.write = (chunk, ...args) => {
+  if (processWithDomain.domain && processWithDomain.domain.stderrWrite) {
+    // @ts-ignore
+    processWithDomain.domain.stderrWrite(Buffer.from(chunk));
+  }
+  // @ts-ignore
+  return originalStderrWrite(chunk, ...args);
+};
 
 const trailingSeparatorRE = /[?&]$/;
 const timestampRE = /\bt=\d{13}&?\b/;
@@ -303,6 +339,8 @@ class VitaleDevServer {
 
     let data;
     let mime;
+    const stdoutChunks: Buffer[] = [];
+    const stderrChunks: Buffer[] = [];
 
     try {
       const cell = getCellById(this.cellsByPath, id);
@@ -331,7 +369,16 @@ class VitaleDevServer {
 
       // server execution
       else {
-        let { default: result } = await this.viteRuntime.executeUrl(id);
+        const domain: DomainWithWriters = Domain.create();
+        domain.stdoutWrite = (chunk: Buffer) => {
+          stdoutChunks.push(chunk);
+        };
+        domain.stderrWrite = (chunk: Buffer) => {
+          stderrChunks.push(chunk);
+        };
+        let { default: result } = await domain.run(
+          async () => await this.viteRuntime.executeUrl(id)
+        );
         if (result instanceof Promise) result = await result;
         if (
           typeof result === "object" &&
@@ -367,12 +414,23 @@ class VitaleDevServer {
       mime = "application/vnd.code.notebook.error";
     }
 
-    const cellOutput: CellOutput = {
-      items:
-        data === undefined
-          ? []
-          : [{ data: [...Buffer.from(data, "utf8").values()], mime }],
-    };
+    const items: CellOutputItem[] = [];
+    if (data !== undefined) {
+      items.push({ data: [...Buffer.from(data, "utf8").values()], mime });
+    }
+    if (stdoutChunks.length > 0) {
+      items.push({
+        data: [...Buffer.concat(stdoutChunks).values()],
+        mime: "application/vnd.code.notebook.stdout",
+      });
+    }
+    if (stderrChunks.length > 0) {
+      items.push({
+        data: [...Buffer.concat(stderrChunks).values()],
+        mime: "application/vnd.code.notebook.stderr",
+      });
+    }
+    const cellOutput: CellOutput = { items };
 
     await Promise.all(
       Array.from(this.clients.values()).map((client) =>
