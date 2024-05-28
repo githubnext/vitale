@@ -4,8 +4,16 @@ import * as babelParser from "@babel/parser";
 import _babelTraverse from "@babel/traverse";
 import * as babelTypes from "@babel/types";
 import type { Cell, SourceDescription } from "./types";
-const babelGenerator: typeof _babelGenerator = (_babelGenerator as any).default;
-const babelTraverse: typeof _babelTraverse = (_babelTraverse as any).default;
+
+// ESM / CJS interop nonsense
+const babelGenerator: typeof _babelGenerator =
+  typeof _babelGenerator === "function"
+    ? _babelGenerator
+    : (_babelGenerator as any).default;
+const babelTraverse: typeof _babelTraverse =
+  typeof _babelTraverse === "function"
+    ? _babelTraverse
+    : (_babelTraverse as any).default;
 
 const reactImports = babelParser.parse(
   `
