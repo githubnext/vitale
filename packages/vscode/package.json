@@ -29,6 +29,13 @@
         "command": "vitale.runDirty",
         "category": "Vitale",
         "icon": "$(run-all)"
+      },
+      {
+        "title": "View cell output in pane",
+        "command": "vitale.viewCellOutputInPane",
+        "category": "Vitale",
+        "icon": "$(open-preview)",
+        "enablement": "notebookType == 'vitale-notebook' && notebookCellHasOutputs"
       }
     ],
     "menus": {
@@ -42,6 +49,13 @@
           "command": "vitale.runDirty",
           "group": "navigation",
           "when": "notebookType == 'vitale-notebook'"
+        }
+      ],
+      "notebook/cell/title": [
+        {
+          "command": "vitale.viewCellOutputInPane",
+          "group": "inline/cell",
+          "when": "notebookType == 'vitale-notebook' && notebookCellHasOutputs"
         }
       ]
     },
@@ -103,6 +117,7 @@
     "@types/react-dom": "^18.2.23",
     "@types/vscode": "1.84.2",
     "@types/vscode-notebook-renderer": "^1.72.3",
+    "@types/vscode-webview": "^1.57.5",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
@@ -111,9 +126,11 @@
     "@vscode/test-electron": "^2.3.9",
     "@vscode/vsce": "^2.24.0",
     "birpc": "^0.2.17",
+    "dompurify": "^3.1.4",
     "eslint": "^8.57.0",
     "get-port": "^7.1.0",
     "json5": "^2.2.3",
+    "markdown-it": "^14.1.0",
     "nanoid": "^5.0.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

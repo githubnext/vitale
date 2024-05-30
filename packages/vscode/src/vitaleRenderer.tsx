@@ -1,10 +1,10 @@
 /// <reference lib="dom" />
-import type { ActivationFunction } from "vscode-notebook-renderer";
+import type { OutputItem } from "vscode-notebook-renderer";
 
 const cellIdRegex = /^([^?]+\.vnb)-cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
 
-export const activate: ActivationFunction = (_context) => ({
-  async renderOutputItem(outputItem, element) {
+export const activate = () => ({
+  async renderOutputItem(outputItem: OutputItem, element: HTMLElement) {
     const { id, origin } = outputItem.json();
     const src = `${origin}/${id}?html`;
     if (

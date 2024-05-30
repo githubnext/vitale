@@ -1,17 +1,25 @@
 import * as vscode from "vscode";
-import { NotebookSerializer } from "./serializer";
-import { NotebookController } from "./controller";
 import { NotebookCellStatusBarItemProvider } from "./cellStatusBarItemProvider";
+import { NotebookController } from "./controller";
 import { makeHandleDidChangeNotebookDocument } from "./handleDidChangeNotebookDocument";
 import { makeHandleDidChangeNotebookEditorSelection } from "./handleDidChangeNotebookEditorSelection";
 import { handleDidChangeTextDocument } from "./handleDidChangeTextDocument";
+import { pauseCell } from "./pauseCell";
+import { NotebookSerializer } from "./serializer";
+import { CellOutputPanes } from "./cellOutputPanes";
 
 export function activate(context: vscode.ExtensionContext) {
+  const cellOutputPanes = new CellOutputPanes(context.extensionUri);
+
   const controller = new NotebookController(
-    vscode.workspace.workspaceFolders?.[0].uri.fsPath
+    vscode.workspace.workspaceFolders?.[0].uri.fsPath,
+    cellOutputPanes
   );
 
   context.subscriptions.push(
+    controller,
+    cellOutputPanes,
+
     vscode.commands.registerCommand("vitale.restartKernel", () => {
       controller.restartKernel();
     }),
@@ -24,27 +32,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("vitale.copyToClipboard", (s: string) => {
       vscode.env.clipboard.writeText(s);
     }),
+    vscode.commands.registerCommand("vitale.pauseCell", pauseCell),
     vscode.commands.registerCommand(
-      "vitale.pauseCell",
-      async (notebookUri: vscode.Uri, cellId: string) => {
-        const notebook = await vscode.workspace.openNotebookDocument(
-          notebookUri
-        );
-        const cell = notebook
-          .getCells()
-          .find((cell) => cell.metadata.id === cellId);
-        if (!cell) {
-          return false;
-        }
-
-        const paused = !cell.metadata.paused;
-        const metadata = { ...cell.metadata, paused };
-        const edit = new vscode.WorkspaceEdit();
-        edit.set(notebookUri, [
-          vscode.NotebookEdit.updateCellMetadata(cell.index, metadata),
-        ]);
-        return vscode.workspace.applyEdit(edit);
-      }
+      "vitale.viewCellOutputInPane",
+      cellOutputPanes.makeViewCellOutputInPane()
     ),
     vscode.workspace.registerNotebookSerializer(
       "vitale-notebook",
@@ -58,7 +49,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeNotebookEditorSelection(
       makeHandleDidChangeNotebookEditorSelection(controller)
     ),
-    controller,
     vscode.notebooks.registerNotebookCellStatusBarItemProvider(
       "vitale-notebook",
       new NotebookCellStatusBarItemProvider()

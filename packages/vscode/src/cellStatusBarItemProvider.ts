@@ -36,7 +36,7 @@ export class NotebookCellStatusBarItemProvider
     pauseItem.command = {
       title: "Pause",
       command: "vitale.pauseCell",
-      arguments: [cell.notebook.uri, cell.metadata.id],
+      arguments: [cell],
     };
     items.push(pauseItem);
 

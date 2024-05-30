@@ -1,9 +1,9 @@
-import type { ActivationFunction } from "vscode-notebook-renderer";
+import type { OutputItem } from "vscode-notebook-renderer";
 import JsonView from "@uiw/react-json-view";
 import { createRoot } from "react-dom/client";
 
-export const activate: ActivationFunction = (_context) => ({
-  renderOutputItem(data, element) {
+export const activate = () => ({
+  renderOutputItem(data: OutputItem, element: HTMLElement) {
     const root = createRoot(element);
     root.render(
       <JsonView

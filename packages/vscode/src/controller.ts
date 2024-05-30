@@ -12,6 +12,7 @@ import { createBirpc } from "birpc";
 import kill from "tree-kill";
 import getPort from "get-port";
 import { log } from "./log";
+import { CellOutputPanes } from "./cellOutputPanes";
 
 function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   return new vscode.NotebookCellOutput(
@@ -69,7 +70,10 @@ export class NotebookController {
 
   private _executions = new Map<string, vscode.NotebookCellExecution>();
 
-  constructor(private _cwd: undefined | string) {
+  constructor(
+    private _cwd: undefined | string,
+    private cellOutputPanes: CellOutputPanes
+  ) {
     this._controller = vscode.notebooks.createNotebookController(
       this.id,
       "vitale-notebook",
@@ -373,21 +377,22 @@ export class NotebookController {
     }
   }
 
-  private endCellExecution(path: string, id: string, cellOutput: CellOutput) {
+  private async endCellExecution(
+    path: string,
+    id: string,
+    cellOutput: CellOutput
+  ) {
     const key = `${path}-${id}`;
     const execution = this._executions.get(key);
     if (execution) {
       const notebookCellOutput = cellOutputToNotebookCellOutput(cellOutput);
-      execution.clearOutput();
-      if (notebookCellOutput.items.length > 0) {
-        // VS Code doesn't clear the output if there are no items
-        // even if you call clearOutput ??
-        execution.appendOutput(notebookCellOutput);
-      }
+      await execution.clearOutput();
+      await execution.appendOutput(notebookCellOutput);
       execution.end(true, Date.now());
       this._executions.delete(key);
 
       this.setCellDirty(execution.cell, false);
+      this.cellOutputPanes.updatePane(execution.cell);
     }
   }
 
@@ -421,6 +426,11 @@ export class NotebookController {
     if (notebookCells.length === 0) {
       return;
     }
+
+    for (const cell of notebookCells) {
+      this.cellOutputPanes.deletePane(cell);
+    }
+
     const cells = notebookCells.map((cell) => ({
       path: cell.notebook.uri.fsPath,
       cellId: cell.metadata.id,

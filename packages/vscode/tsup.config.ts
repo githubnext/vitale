@@ -8,7 +8,6 @@ export default defineConfig([
   },
   {
     entry: ["./src/jsonRenderer.tsx"],
-    external: ["vscode"],
     format: ["esm"],
     splitting: false,
     esbuildOptions(options) {
@@ -19,7 +18,16 @@ export default defineConfig([
   },
   {
     entry: ["./src/vitaleRenderer.tsx"],
-    external: ["vscode"],
+    format: ["esm"],
+    splitting: false,
+    esbuildOptions(options) {
+      options.define = {
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      };
+    },
+  },
+  {
+    entry: ["./src/cellOutputWebview.ts"],
     format: ["esm"],
     splitting: false,
     esbuildOptions(options) {
