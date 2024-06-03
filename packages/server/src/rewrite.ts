@@ -25,13 +25,16 @@ import ReactDOM from "react-dom/client";
 
 const reactRender = babelParser.parse(
   `
-ReactDOM.createRoot(
-  document.getElementById(__vitale_cell_output_root_id__)
-).render(
-  <React.StrictMode>
-    {__vitale_jsx_expression__}
-  </React.StrictMode>
-);
+const __vitale_cell_output_element = document.getElementById(__vitale_cell_output_root_id__);
+if (__vitale_cell_output_element) {
+  ReactDOM.createRoot(
+    __vitale_cell_output_element
+  ).render(
+    <React.StrictMode>
+      {__vitale_jsx_expression__}
+    </React.StrictMode>
+  );
+}
 `,
   { sourceType: "module", plugins: ["jsx"] }
 ).program.body;
