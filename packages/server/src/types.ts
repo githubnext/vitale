@@ -1,3 +1,4 @@
+import type { GeneratorResult } from "@babel/generator";
 import * as babelTypes from "@babel/types";
 
 export interface CellOutputItem {
@@ -46,9 +47,7 @@ export type ClientFunctions = {
   ) => void;
 };
 
-export type SourceDescription = {
-  code: string;
-  ast: babelTypes.File;
+export type SourceDescription = GeneratorResult & {
   type: "server" | "client";
   autoExports: babelTypes.ImportDeclaration[];
 };

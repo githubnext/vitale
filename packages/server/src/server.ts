@@ -179,6 +179,19 @@ function deleteCellById(
   }
 }
 
+function rewriteStack(stack: undefined | string): undefined | string {
+  if (!stack) {
+    return stack;
+  }
+
+  const i = stack.indexOf("\n    at ESModulesRunner.runViteModule");
+  if (i !== -1) {
+    return stack.substring(0, i);
+  } else {
+    return stack;
+  }
+}
+
 class VitaleDevServer {
   static async construct(options: Options) {
     const cellsByPath: Map<string, Map<string, Cell>> = new Map();
@@ -227,7 +240,7 @@ class VitaleDevServer {
               );
             }
 
-            return cell.sourceDescription.code;
+            return cell.sourceDescription;
           },
 
           configureServer(server) {
@@ -408,7 +421,7 @@ class VitaleDevServer {
       const obj = {
         name: err.name,
         message: err.message,
-        stack: err.stack,
+        stack: rewriteStack(err.stack),
       };
       data = JSON.stringify(obj, undefined, "\t");
       mime = "application/vnd.code.notebook.error";

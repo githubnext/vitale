@@ -232,10 +232,14 @@ function rewrite(
     }
   }
 
-  const generatorResult = babelGenerator(ast);
-  return {
+  const generatorResult = babelGenerator(
     ast,
+    { sourceMaps: true, sourceFileName: id },
+    code
+  );
+  return {
     code: generatorResult.code,
+    map: generatorResult.map,
     type,
     autoExports,
   };
