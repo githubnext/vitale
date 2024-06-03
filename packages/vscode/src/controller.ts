@@ -333,6 +333,9 @@ export class NotebookController {
     await Promise.all(
       notebookCells.map((cell) => this.setCellDirty(cell, true))
     );
+    if (getRerunCellsWhenDirty()) {
+      this.executeCells(notebookCells, false);
+    }
   }
 
   private async startCellExecution(path: string, id: string, force: boolean) {
