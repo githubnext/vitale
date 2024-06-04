@@ -115,7 +115,7 @@ window.addEventListener("message", async (e: MessageEvent<OutputMessage>) => {
 
   let renderer: RendererApi | undefined;
   switch (item.mime) {
-    case "application/json":
+    case "application/x-json-view":
       renderer = getJsonRenderer();
       break;
 
@@ -141,6 +141,7 @@ window.addEventListener("message", async (e: MessageEvent<OutputMessage>) => {
       break;
     }
 
+    case "application/json":
     case "text/latex":
     case "text/markdown":
     case "text/x-abap":
@@ -212,7 +213,6 @@ window.addEventListener("message", async (e: MessageEvent<OutputMessage>) => {
     case "text/x-vb":
     case "text/x-xml":
     case "text/x-yaml": {
-      /* case: "application/json": */
       renderer = await getMarkdownLanguageFeatures();
       break;
     }
