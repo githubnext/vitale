@@ -57,10 +57,11 @@ cell (e.g. to avoid colliding with another definition), define it inside a block
 
 Re-executing a cell that defines variables used in other cells will cause the
 dependent cells to be re-executed automatically. If you don't want this behavior
-for some reason (e.g. you have a long-running cell) you can use the ![pause](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxZW0iIGhlaWdodD0iMWVtIiB2aWV3Qm94PSIwIDAgMTYgMTYiPjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZD0iTTQuNSAzSDZ2MTBINC41em03IDB2MTBIMTBWM3oiLz48L3N2Zz4=) / ![play](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxZW0iIGhlaWdodD0iMWVtIiB2aWV3Qm94PSIwIDAgMTYgMTYiPjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtNC4yNSAzbDEuMTY2LS42MjRsOCA1LjMzM3YxLjI0OGwtOCA1LjMzNGwtMS4xNjYtLjYyNHptMS41IDEuNDAxdjcuODY0bDUuODk4LTMuOTMyeiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PC9zdmc+)
-buttons in the cell status bar to pause and restart execution; or if you want
-to turn it off globally you can uncheck the "Vitale: Rerun Cells When Dirty"
-setting.
+for some reason (e.g. you have a long-running cell) you can use the
+![pause](./assets/CodiconDebugPause.svg) /
+![play](./assets/CodiconDebugStart.svg) buttons in the cell status bar to pause
+and restart execution; or if you want to turn it off globally you can uncheck
+the "Vitale: Rerun Cells When Dirty" setting.
 
 ## Importing modules
 
@@ -93,9 +94,9 @@ Since code in cells is transformed by Vite, you need to prefix variables with
 ## Output panes
 
 Cell output is displayed below the cell. You can open the output in a separate
-pane by clicking the ![preview](data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxZW0iIGhlaWdodD0iMWVtIiB2aWV3Qm94PSIwIDAgMTYgMTYiPjxwYXRoIGZpbGw9ImN1cnJlbnRDb2xvciIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMyAxaDExbDEgMXY1LjNhMy4yIDMuMiAwIDAgMC0xLS4zVjJIOXYxMC44OEw3Ljg4IDE0SDNsLTEtMVYyem0wIDEyaDVWMkgzem0xMC4zNzktNC45OThhMi41IDIuNSAwIDAgMC0xLjE5LjM0OGgtLjAzYTIuNTEgMi41MSAwIDAgMC0uNzk5IDMuNTNMOSAxNC4yM2wuNzEuNzFsMi4zNS0yLjM2Yy4zMjUuMjIuNy4zNTggMS4wOS40YTIuNSAyLjUgMCAwIDAgMS4xNC0uMTNhMi41IDIuNSAwIDAgMCAxLS42M2EyLjQ2IDIuNDYgMCAwIDAgLjU4LTFhMi42IDIuNiAwIDAgMCAuMDctMS4xNWEyLjUzIDIuNTMgMCAwIDAtMS4zNS0xLjgxYTIuNSAyLjUgMCAwIDAtMS4yMTEtLjI1OG0uMjQgMy45OTJhMS41IDEuNSAwIDAgMS0uOTc5LS4yNDRhMS41NSAxLjU1IDAgMCAxLS41Ni0uNjhhMS41IDEuNSAwIDAgMS0uMDgtLjg2YTEuNDkgMS40OSAwIDAgMSAxLjE4LTEuMThhMS41IDEuNSAwIDAgMSAuODYuMDhjLjI3Ni4xMTcuNTEyLjMxMS42OC41NmExLjUgMS41IDAgMCAxLTEuMSAyLjMyNHoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg==)
-button in the cell toolbar. Output in a separate pane is updated when the cell
-is reëxecuted or when dependencies change.
+pane by clicking the ![preview](./assets/CodiconOpenPreview.svg) button in the
+cell toolbar. Output in a separate pane is updated when the cell is reëxecuted
+or when dependencies change.
 
 ## Rendering different MIME types
 
