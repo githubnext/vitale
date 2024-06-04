@@ -156,7 +156,12 @@ function findAutoImports(
     },
   });
 
-  const autoImports: babelTypes.ImportDeclaration[] = [];
+  const autoImports: babelTypes.ImportDeclaration[] = [
+    babelTypes.importDeclaration(
+      [babelTypes.importNamespaceSpecifier(babelTypes.identifier("Vitale"))],
+      babelTypes.stringLiteral("@githubnext/vitale")
+    ),
+  ];
   next: for (const name of unbound) {
     for (const cell of cells.values()) {
       if (cell.sourceDescription) {

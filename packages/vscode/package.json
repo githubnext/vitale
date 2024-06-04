@@ -76,7 +76,7 @@
         "displayName": "JSON Renderer",
         "entrypoint": "./dist/jsonRenderer.mjs",
         "mimeTypes": [
-          "application/json"
+          "application/x-json-view"
         ]
       },
       {

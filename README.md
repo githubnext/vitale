@@ -91,19 +91,41 @@ Since code in cells is transformed by Vite, you need to prefix variables with
 
 ## Rendering different MIME types
 
-Object values are returned with MIME type `application/json` and rendered using
-`react-json-view`. `HTMLElement` values are returned with MIME type `text/html`
-and rendered as HTML. `SVGElement` values are returned with MIME type
-`image/svg+xml` and rendered as SVG.
+`vitale` inspects the output value and tries to pick an appropriate MIME type to
+render it. For most Javascript objects this is `application/json`, which is
+rendered by VS Code with syntax highlighting. For complex objects you can render
+an expandable view (using
+[react-json-view](https://github.com/uiwjs/react-json-view)) by returning the
+`application/x-json-view` MIME type. `HTMLElement` and `SVGElement` objects are
+rendered as `text/html` and `image/svg+xml` respectively (see below for an
+example).
 
-To override the MIME type, return an object of type `{ data: string, mime:
-string }` (currently there's no way to return binary data). VS Code has several
-built-in renderers (see [Rich
+To set the MIME type of the output explicitly, return an object of type `{ data:
+string, mime: string }` (currently there's no way to return binary data). VS
+Code has several built-in renderers (see [Rich
 Output](https://code.visualstudio.com/api/extension-guides/notebook#rich-output))
 and you can install others as extensions.
 
-To make `HTMLElement` / `SVGElement` values, you can use `jsdom` or a similar
-library; for example, to render an SVG from [Observable
+There are helper functions in `@githubnext/vitale` to construct these
+MIME-tagged outputs:
+
+```ts
+function text(data: string);
+function markdown(data: string);
+function html(html: string | { outerHTML: string });
+function svg(html: string | { outerHTML: string });
+function json(obj: object);
+function jsonView(obj: object);
+```
+
+This package is auto-imported under the name `Vitale` in notebook cells, so you can write e.g.
+
+```ts
+Vitale.jsonView({ foo: "bar" });
+```
+
+You can construct `HTMLElement` and `SVGElement` values using `jsdom` or a
+similar library; for example, to render an SVG from [Observable
 Plot](https://observablehq.com/plot/):
 
 ```ts

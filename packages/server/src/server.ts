@@ -13,7 +13,7 @@ import type {
   CellOutputItem,
   ClientFunctions,
   ServerFunctions,
-} from "./types";
+} from "./rpc-types";
 import { Cell, Options } from "./types";
 import { handleHMRUpdate } from "./hmr";
 import * as Domain from "node:domain";
