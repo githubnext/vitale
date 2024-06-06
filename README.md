@@ -1,7 +1,16 @@
+![hero](./assets/hero.png)
+
 # Vitale
 
-`vitale` is a notebook for Node + TypeScript that uses `vite` for compilation
-and hot-reloading.
+`vitale` is a VS Code notebook implementation for Node.js + TypeScript. It
+supports
+
+- automatic re-execution of dependent cells
+- splitting cell outputs into a separate pane
+- rendering React components
+
+It uses `vite` for compilation and hot-reloading, so you can process code with
+standard `vite` plugins.
 
 ## Installation
 
@@ -26,9 +35,10 @@ and hot-reloading.
     - `pnpm add -D typescript@npm:@githubnext/typescript`
 
       This is a patched version of of TypeScript 5.4.5 which hacks in support
-      for the pathnames that VS Code uses for notebook cells (with stock
+      for the pathnames that VS Code uses for notebook cells. (With stock
       TypeScript, `tsserver` can't find the `tsconfig.json` and can't find
-      referenced project files, so you get a lot of spurious squiggles).
+      referenced project files, so you lose typings and get a lot of spurious
+      squiggle. More at https://github.com/microsoft/vscode/issues/213740)
 
 ## Getting started
 
@@ -95,7 +105,7 @@ Since code in cells is transformed by Vite, you need to prefix variables with
 
 Cell output is displayed below the cell. You can open the output in a separate
 pane by clicking the ![preview](./assets/CodiconOpenPreview.svg) button in the
-cell toolbar. Output in a separate pane is updated when the cell is reëxecuted
+cell toolbar. Output in a separate pane is updated when the cell is re-executed
 or when dependencies change.
 
 ## Rendering different MIME types
@@ -205,5 +215,5 @@ version:
 - `cd packages/server; pnpm link --dir $YOURPROJECT`
 
 The linked development server is automatically rebuilt but not hot-reloaded; you
-can get the latest changed by restarting the server (run `Vitale: Restart
+can get the latest changes by restarting the server (run `Vitale: Restart
 Kernel` from the command palette).
