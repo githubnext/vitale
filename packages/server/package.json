@@ -33,7 +33,7 @@
     "json5": "^2.2.3",
     "picocolors": "^1.0.0",
     "vite": "^5.2.6",
-    "ws": "^8.16.0"
+    "ws": "^8.17.1"
   },
   "devDependencies": {
     "@types/babel__generator": "^7.6.8",
