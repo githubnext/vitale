@@ -1,52 +1,14 @@
 #!/usr/bin/env node
-import { createBirpc, type BirpcReturn } from "birpc";
 import corsMiddleware from "cors";
-import JSON5 from "json5";
 import * as Path from "node:path";
 import type { ViteDevServer } from "vite";
 import { createServer as createViteServer, send } from "vite";
-import { ESModulesRunner, ViteRuntime } from "vite/runtime";
-import { WebSocketServer, type WebSocket } from "ws";
+import { WebSocketServer } from "ws";
+import { Cells, cellIdRegex } from "./cells";
 import rewrite from "./rewrite";
-import type {
-  CellOutput,
-  CellOutputItem,
-  ClientFunctions,
-  ServerFunctions,
-} from "./rpc-types";
-import { Cell, Options } from "./types";
-import { handleHMRUpdate } from "./hmr";
-import * as Domain from "node:domain";
-
-const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-const originalStderrWrite = process.stderr.write.bind(process.stderr);
-
-type DomainWithWriters = Domain.Domain & {
-  stdoutWrite?: (chunk: Buffer) => void;
-  stderrWrite?: (chunk: Buffer) => void;
-};
-
-const processWithDomain: typeof process & {
-  domain?: DomainWithWriters;
-} = process;
-
-process.stdout.write = (chunk, ...args) => {
-  if (processWithDomain.domain && processWithDomain.domain.stdoutWrite) {
-    // @ts-ignore
-    processWithDomain.domain.stdoutWrite(Buffer.from(chunk));
-  }
-  // @ts-ignore
-  return originalStdoutWrite(chunk, ...args);
-};
-
-process.stderr.write = (chunk, ...args) => {
-  if (processWithDomain.domain && processWithDomain.domain.stderrWrite) {
-    // @ts-ignore
-    processWithDomain.domain.stderrWrite(Buffer.from(chunk));
-  }
-  // @ts-ignore
-  return originalStderrWrite(chunk, ...args);
-};
+import { Rpc } from "./rpc";
+import { Runtime } from "./runtime";
+import { Options } from "./types";
 
 const trailingSeparatorRE = /[?&]$/;
 const timestampRE = /\bt=\d{13}&?\b/;
@@ -56,50 +18,6 @@ function removeTimestampQuery(url: string): string {
 const htmlRE = /\bhtml&?\b/;
 function removeHtmlQuery(url: string): string {
   return url.replace(htmlRE, "").replace(trailingSeparatorRE, "");
-}
-
-interface PossibleSVG {
-  outerHTML: string;
-}
-
-function isSVGElementLike(obj: unknown): obj is PossibleSVG {
-  return (
-    obj !== null &&
-    typeof obj === "object" &&
-    "outerHTML" in obj &&
-    typeof obj.outerHTML === "string" &&
-    obj.outerHTML.startsWith("<svg")
-  );
-}
-
-interface PossibleHTML {
-  outerHTML: string;
-}
-
-function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
-  return (
-    obj !== null &&
-    typeof obj === "object" &&
-    "outerHTML" in obj &&
-    typeof obj.outerHTML === "string"
-  );
-}
-
-const cellIdRegex = /^([^?]+\.vnb)-cellId=([a-zA-z0-9_-]{21})\.([a-z]+)$/;
-
-function extOfLanguage(language: string): string {
-  switch (language) {
-    case "typescriptreact":
-      return "tsx";
-    case "typescript":
-      return "ts";
-    case "javascriptreact":
-      return "jsx";
-    case "javascript":
-      return "js";
-    default:
-      throw new Error(`unknown language "${language}"`);
-  }
 }
 
 function makeHtmlSource(url: string) {
@@ -133,68 +51,9 @@ function makeHtmlSource(url: string) {
 `;
 }
 
-function getCellById(cellsByPath: Map<string, Map<string, Cell>>, id: string) {
-  const match = cellIdRegex.exec(id);
-  if (match) {
-    const [_, path, cellId, ext] = match;
-    const cells = cellsByPath.get(path);
-    if (cells) {
-      const cell = cells.get(cellId);
-      if (cell && extOfLanguage(cell.language) === ext) {
-        return cell;
-      }
-    }
-  }
-  return null;
-}
-
-function setCellById(
-  cellsByPath: Map<string, Map<string, Cell>>,
-  id: string,
-  cell: Cell
-) {
-  const match = cellIdRegex.exec(id);
-  if (match) {
-    const [_, path, cellId] = match;
-    let cells = cellsByPath.get(path);
-    if (!cells) {
-      cells = new Map();
-      cellsByPath.set(path, cells);
-    }
-    cells.set(cellId, cell);
-  }
-}
-
-function deleteCellById(
-  cellsByPath: Map<string, Map<string, Cell>>,
-  id: string
-) {
-  const match = cellIdRegex.exec(id);
-  if (match) {
-    const [_, path, cellId] = match;
-    const cells = cellsByPath.get(path);
-    if (cells) {
-      cells.delete(cellId);
-    }
-  }
-}
-
-function rewriteStack(stack: undefined | string): undefined | string {
-  if (!stack) {
-    return stack;
-  }
-
-  const i = stack.indexOf("\n    at ESModulesRunner.runViteModule");
-  if (i !== -1) {
-    return stack.substring(0, i);
-  } else {
-    return stack;
-  }
-}
-
 class VitaleDevServer {
   static async construct(options: Options) {
-    const cellsByPath: Map<string, Map<string, Cell>> = new Map();
+    const cells = new Cells();
 
     let origin;
     const codespaceName = process.env.CODESPACE_NAME;
@@ -220,11 +79,11 @@ class VitaleDevServer {
             const id = source.startsWith(viteServer.config.root)
               ? source
               : Path.join(viteServer.config.root, source);
-            const cell = getCellById(cellsByPath, id);
+            const cell = cells.get(id);
             return cell ? id : null;
           },
           load(id) {
-            const cell = getCellById(cellsByPath, id);
+            const cell = cells.get(id);
             if (!cell) {
               return null;
             }
@@ -236,7 +95,7 @@ class VitaleDevServer {
                 cell.language,
                 id,
                 cell.cellId,
-                cellsByPath.get(path)!
+                cells.forPath(path)
               );
             }
 
@@ -250,9 +109,7 @@ class VitaleDevServer {
               if (req.url) {
                 const htmlQuery = htmlRE.test(req.url);
                 const url = removeHtmlQuery(removeTimestampQuery(req.url));
-                if (
-                  getCellById(cellsByPath, Path.join(server.config.root, url))
-                ) {
+                if (cells.get(Path.join(server.config.root, url))) {
                   if (htmlQuery) {
                     const html = await server.transformIndexHtml(
                       url,
@@ -283,31 +140,17 @@ class VitaleDevServer {
       ],
     });
 
-    return new VitaleDevServer(viteServer, cellsByPath);
+    return new VitaleDevServer(viteServer, cells);
   }
 
   private viteServer: ViteDevServer;
-  private viteRuntime: ViteRuntime;
-  private clients: Map<
-    WebSocket,
-    BirpcReturn<ClientFunctions, ServerFunctions>
-  > = new Map();
-  private cellsByPath: Map<string, Map<string, Cell>>;
+  private runtime: Runtime;
+  private rpc: Rpc;
 
-  private constructor(
-    viteServer: ViteDevServer,
-    cellsByPath: Map<string, Map<string, Cell>>
-  ) {
+  private constructor(viteServer: ViteDevServer, cells: Cells) {
     this.viteServer = viteServer;
-    this.cellsByPath = cellsByPath;
-
-    this.viteRuntime = new ViteRuntime(
-      {
-        root: viteServer.config.root,
-        fetchModule: viteServer.ssrFetchModule,
-      },
-      new ESModulesRunner()
-    );
+    this.runtime = new Runtime(viteServer);
+    this.rpc = new Rpc(cells, this.runtime);
 
     const wss = new WebSocketServer({ noServer: true });
 
@@ -317,7 +160,7 @@ class VitaleDevServer {
       if (pathname !== "/__vitale_api__") return;
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
-        this.setupClient(ws);
+        this.rpc.setupClient(ws);
       });
     });
 
@@ -330,298 +173,10 @@ class VitaleDevServer {
     });
   }
 
-  private async executeCell(
-    id: string,
-    path: string,
-    cellId: string,
-    force: boolean
-  ) {
-    // TODO(jaked)
-    // await so client finishes startCellExecution before we send endCellExecution
-    // would be better for client to lock around startCellExecution
-    const startOK = (
-      await Promise.all(
-        Array.from(this.clients.values()).map((client) =>
-          client.startCellExecution(path, cellId, force)
-        )
-      )
-    ).every((ok) => ok);
-    if (!startOK) {
-      return false;
-    }
-
-    let data;
-    let mime;
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
-
-    try {
-      const cell = getCellById(this.cellsByPath, id);
-      if (!cell) throw new Error(`cell not found: ${id}`);
-
-      if (!cell.sourceDescription) {
-        const [_, path] = cellIdRegex.exec(id)!;
-        cell.sourceDescription = rewrite(
-          cell.code,
-          cell.language,
-          id,
-          cell.cellId,
-          this.cellsByPath.get(path)!
-        );
-      }
-
-      // client execution
-      if (cell.sourceDescription.type === "client") {
-        data = JSON.stringify({
-          // TODO(jaked) strip workspace root when executeCell is called
-          id: id.substring(this.viteServer.config.root.length + 1),
-          origin: this.viteServer.config.server.origin,
-        });
-        mime = "application/x-vitale";
-      }
-
-      // server execution
-      else {
-        const domain: DomainWithWriters = Domain.create();
-        domain.stdoutWrite = (chunk: Buffer) => {
-          stdoutChunks.push(chunk);
-        };
-        domain.stderrWrite = (chunk: Buffer) => {
-          stderrChunks.push(chunk);
-        };
-        let { default: result } = await domain.run(
-          async () => await this.viteRuntime.executeUrl(id)
-        );
-        if (result instanceof Promise) result = await result;
-        if (
-          typeof result === "object" &&
-          "data" in result &&
-          typeof result.data === "string" &&
-          "mime" in result &&
-          typeof result.mime === "string"
-        ) {
-          mime = result.mime;
-          data = result.data;
-        } else if (isSVGElementLike(result)) {
-          mime = "image/svg+xml";
-          data = result.outerHTML;
-        } else if (isHTMLElementLike(result)) {
-          mime = "text/html";
-          data = result.outerHTML;
-        } else if (typeof result === "object") {
-          mime = "application/json";
-          data = JSON.stringify(result);
-        } else {
-          mime = "text/x-javascript";
-          data = JSON.stringify(result);
-        }
-      }
-    } catch (e) {
-      const err = e as Error;
-      const obj = {
-        name: err.name,
-        message: err.message,
-        stack: rewriteStack(err.stack),
-      };
-      data = JSON.stringify(obj, undefined, "\t");
-      mime = "application/vnd.code.notebook.error";
-    }
-
-    const items: CellOutputItem[] = [];
-    if (data !== undefined) {
-      items.push({ data: [...Buffer.from(data, "utf8").values()], mime });
-    }
-    if (stdoutChunks.length > 0) {
-      items.push({
-        data: [...Buffer.concat(stdoutChunks).values()],
-        mime: "application/vnd.code.notebook.stdout",
-      });
-    }
-    if (stderrChunks.length > 0) {
-      items.push({
-        data: [...Buffer.concat(stderrChunks).values()],
-        mime: "application/vnd.code.notebook.stderr",
-      });
-    }
-    const cellOutput: CellOutput = { items };
-
-    await Promise.all(
-      Array.from(this.clients.values()).map((client) =>
-        client.endCellExecution(path, cellId, cellOutput)
-      )
-    );
-    return true;
-  }
-
-  private invalidateModule(
-    id: string,
-    dirtyCells: { path: string; cellId: string; ext: string }[]
-  ) {
-    const mod = this.viteRuntime.moduleCache.get(id);
-    this.viteRuntime.moduleCache.delete(id);
-
-    const match = cellIdRegex.exec(id);
-    if (match) {
-      const [_, path, cellId, ext] = match;
-      if (
-        !dirtyCells.some((cell) => cell.path === path && cell.cellId === cellId)
-      ) {
-        dirtyCells.push({ path, cellId, ext });
-      }
-    }
-
-    for (const dep of mod.importers ?? []) {
-      this.invalidateModule(
-        Path.join(this.viteServer.config.root, dep),
-        dirtyCells
-      );
-    }
-  }
-
-  private markCellsDirty(cells: { path: string; cellId: string }[]) {
-    if (cells.length === 0) {
-      return;
-    }
-    for (const client of this.clients.values()) {
-      client.markCellsDirty(cells);
-    }
-  }
-
   private invalidateModuleAndDirty(id: string) {
     const cells: { path: string; cellId: string; ext: string }[] = [];
-    this.invalidateModule(id, cells);
-    this.markCellsDirty(cells);
-  }
-
-  private async executeCellsRPC(
-    cells: {
-      path: string;
-      cellId: string;
-      language: string;
-      code?: string;
-    }[],
-    force: boolean,
-    executeDirtyCells: boolean
-  ) {
-    let dirtyCells: { path: string; cellId: string; ext: string }[] = [];
-
-    for (const { path, cellId, language, code } of cells) {
-      const ext = extOfLanguage(language);
-      const id = `${path}-cellId=${cellId}.${ext}`;
-      if (code) {
-        setCellById(this.cellsByPath, id, { cellId, code, language });
-      }
-
-      const mod = this.viteServer.moduleGraph.getModuleById(id);
-      if (mod) {
-        this.viteServer.moduleGraph.invalidateModule(mod);
-        handleHMRUpdate(id, this.viteServer);
-      }
-
-      this.invalidateModule(id, dirtyCells);
-    }
-
-    dirtyCells = dirtyCells.filter(
-      (dirtyCell) =>
-        !cells.some(
-          (cell) =>
-            cell.path === dirtyCell.path && cell.cellId === dirtyCell.cellId
-        )
-    );
-
-    const cellsToExecute = [
-      ...cells.map(({ path, cellId, language }) => ({
-        path,
-        cellId,
-        ext: extOfLanguage(language),
-        force,
-      })),
-      ...(executeDirtyCells
-        ? dirtyCells.map((cell) => ({ ...cell, force: false }))
-        : []),
-    ];
-
-    const executed = await Promise.all(
-      cellsToExecute.map(({ path, cellId, ext, force }) =>
-        this.executeCell(`${path}-cellId=${cellId}.${ext}`, path, cellId, force)
-      )
-    );
-
-    const cellsToMarkDirty = cellsToExecute.filter(
-      ({ force }, i) => !force && !executed[i]
-    );
-    this.markCellsDirty(cellsToMarkDirty);
-  }
-
-  private removeCellsRPC(
-    cells: {
-      path: string;
-      cellId: string;
-      language: string;
-    }[]
-  ) {
-    let dirtyCells: { path: string; cellId: string; ext: string }[] = [];
-
-    for (const { path, cellId, language } of cells) {
-      const ext = extOfLanguage(language);
-      const id = `${path}-cellId=${cellId}.${ext}`;
-      deleteCellById(this.cellsByPath, id);
-
-      const mod = this.viteServer.moduleGraph.getModuleById(id);
-      if (mod) {
-        this.viteServer.moduleGraph.invalidateModule(mod);
-        // TODO(jaked) HMR remove?
-      }
-
-      this.invalidateModule(id, dirtyCells);
-    }
-
-    // don't mark cells dirty if they were just removed
-    dirtyCells = dirtyCells.filter(
-      (dirtyCell) =>
-        !cells.some(
-          (cell) =>
-            cell.path === dirtyCell.path && cell.cellId === dirtyCell.cellId
-        )
-    );
-    this.markCellsDirty(dirtyCells);
-  }
-
-  private setupClient(ws: WebSocket) {
-    const self = this;
-    const rpc = createBirpc<ClientFunctions, ServerFunctions>(
-      {
-        ping: async () => {
-          console.log("ping");
-          return "pong";
-        },
-        async executeCells(cells, force, executeDirtyCells) {
-          try {
-            return self.executeCellsRPC(cells, force, executeDirtyCells);
-          } catch (e) {
-            console.error(e);
-          }
-        },
-        async removeCells(cells) {
-          try {
-            return self.removeCellsRPC(cells);
-          } catch (e) {
-            console.error(e);
-          }
-        },
-      },
-      {
-        post: (msg) => ws.send(msg),
-        on: (fn) => ws.on("message", fn),
-        serialize: (v) => JSON5.stringify(v),
-        deserialize: (v) => JSON5.parse(v),
-      }
-    );
-
-    this.clients.set(ws, rpc);
-    ws.on("close", () => {
-      this.clients.delete(ws);
-    });
+    this.runtime.invalidateRuntimeModule(id, cells);
+    this.rpc.markCellsDirty(cells);
   }
 
   listen() {
