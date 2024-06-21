@@ -42,20 +42,6 @@ export class NotebookCellStatusBarItemProvider
     };
     items.push(pauseItem);
 
-    // TODO(jaked)
-    // it would be nice to show this only if there is any output
-    const stdoutItem = new vscode.NotebookCellStatusBarItem(
-      "$(output)",
-      vscode.NotebookCellStatusBarAlignment.Right
-    );
-    stdoutItem.tooltip = "Stdout";
-    stdoutItem.command = {
-      title: "Show stdout",
-      command: "vitale.showStdout",
-      arguments: [cell],
-    };
-    items.push(stdoutItem);
-
     return items;
   }
 }

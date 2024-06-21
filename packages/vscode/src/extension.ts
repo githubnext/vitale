@@ -5,7 +5,7 @@ import { makeHandleDidChangeNotebookDocument } from "./handleDidChangeNotebookDo
 import { makeHandleDidChangeNotebookEditorSelection } from "./handleDidChangeNotebookEditorSelection";
 import { handleDidChangeTextDocument } from "./handleDidChangeTextDocument";
 import { pauseCell } from "./pauseCell";
-import { showStdout } from "./showStdout";
+import { showCellOutputChannel } from "./showCellOutputChannel";
 import { NotebookSerializer } from "./serializer";
 import { CellOutputPanes } from "./cellOutputPanes";
 
@@ -34,7 +34,10 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.env.clipboard.writeText(s);
     }),
     vscode.commands.registerCommand("vitale.pauseCell", pauseCell),
-    vscode.commands.registerCommand("vitale.showStdout", showStdout),
+    vscode.commands.registerCommand(
+      "vitale.showCellOutputChannel",
+      showCellOutputChannel
+    ),
     vscode.commands.registerCommand(
       "vitale.viewCellOutputInPane",
       cellOutputPanes.makeViewCellOutputInPane()

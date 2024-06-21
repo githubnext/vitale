@@ -189,7 +189,7 @@ tried it.
 
 Standard output and error streams are captured when running cells and sent to a
 per-cell output channel. Press the ![output](./assets/CodiconOutput.svg) button
-in the cell status bar to view the channel.
+in the cell toolbar to view the channel.
 
 ## Environment variables
 

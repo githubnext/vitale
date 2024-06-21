@@ -36,6 +36,13 @@
         "category": "Vitale",
         "icon": "$(open-preview)",
         "enablement": "notebookType == 'vitale-notebook' && notebookCellHasOutputs"
+      },
+      {
+        "title": "Show cell output channel",
+        "command": "vitale.showCellOutputChannel",
+        "category": "Vitale",
+        "icon": "$(output)",
+        "enablement": "notebookType == 'vitale-notebook'"
       }
     ],
     "menus": {
@@ -54,8 +61,13 @@
       "notebook/cell/title": [
         {
           "command": "vitale.viewCellOutputInPane",
-          "group": "inline/cell",
+          "group": "inline/cell@1",
           "when": "notebookType == 'vitale-notebook' && notebookCellHasOutputs"
+        },
+        {
+          "command": "vitale.showCellOutputChannel",
+          "group": "inline/cell@2",
+          "when": "notebookType == 'vitale-notebook'"
         }
       ]
     },
