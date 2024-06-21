@@ -138,6 +138,8 @@ export class NotebookController {
       {
         markCellsDirty: this.markCellsDirty.bind(this),
         startCellExecution: this.startCellExecution.bind(this),
+        outputStdout: this.outputStdout.bind(this),
+        outputStderr: this.outputStderr.bind(this),
         endCellExecution: this.endCellExecution.bind(this),
       },
       {
@@ -368,6 +370,18 @@ export class NotebookController {
 
     this._executions.set(key, execution);
     return true;
+  }
+
+  private outputStdout(path: string, cellId: string, output: string) {
+    const name = `${path}-${cellId}-stdout`;
+    const channel = vscode.window.createOutputChannel(name, { log: true });
+    channel.append(output);
+  }
+
+  private outputStderr(path: string, cellId: string, output: string) {
+    const name = `${path}-${cellId}-stderr`;
+    const channel = vscode.window.createOutputChannel(name, { log: true });
+    channel.append(output);
   }
 
   private cancelCellExecution(path: string, id: string) {

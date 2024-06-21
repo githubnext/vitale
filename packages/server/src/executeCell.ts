@@ -83,9 +83,6 @@ export async function executeCell(
   }
 
   let mimeTaggedResult;
-  const stdoutChunks: Buffer[] = [];
-  const stderrChunks: Buffer[] = [];
-
   try {
     const cell = cells.get(id);
     if (!cell) throw new Error(`cell not found: ${id}`);
@@ -115,7 +112,14 @@ export async function executeCell(
 
     // server execution
     else {
-      const domain = createDomain(stdoutChunks, stderrChunks);
+      const domain = createDomain(
+        (chunk) => {
+          rpc.outputStdout(path, cellId, chunk.toString("utf8"));
+        },
+        (chunk) => {
+          rpc.outputStderr(path, cellId, chunk.toString("utf8"));
+        }
+      );
       let { default: result } = await domain.run(
         async () => await runtime.executeUrl(id)
       );
@@ -140,18 +144,6 @@ export async function executeCell(
     items.push({
       data: [...Buffer.from(mimeTaggedResult.data, "utf8").values()],
       mime: mimeTaggedResult.mime,
-    });
-  }
-  if (stdoutChunks.length > 0) {
-    items.push({
-      data: [...Buffer.concat(stdoutChunks).values()],
-      mime: "application/vnd.code.notebook.stdout",
-    });
-  }
-  if (stderrChunks.length > 0) {
-    items.push({
-      data: [...Buffer.concat(stderrChunks).values()],
-      mime: "application/vnd.code.notebook.stderr",
     });
   }
   const cellOutput: CellOutput = { items };

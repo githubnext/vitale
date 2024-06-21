@@ -31,15 +31,11 @@ process.stderr.write = (chunk, ...args) => {
 };
 
 export function createDomain(
-  stdoutChunks: Buffer[],
-  stderrChunks: Buffer[]
+  stdoutWrite: (chunk: Buffer) => void,
+  stderrWrite: (chunk: Buffer) => void
 ): DomainWithWriters {
   const domain: DomainWithWriters = Domain.create();
-  domain.stdoutWrite = (chunk: Buffer) => {
-    stdoutChunks.push(chunk);
-  };
-  domain.stderrWrite = (chunk: Buffer) => {
-    stderrChunks.push(chunk);
-  };
+  domain.stdoutWrite = stdoutWrite;
+  domain.stderrWrite = stderrWrite;
   return domain;
 }

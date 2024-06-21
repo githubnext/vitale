@@ -37,6 +37,8 @@ export type ClientFunctions = {
     cellId: string,
     force: boolean
   ) => Promise<boolean>;
+  outputStdout: (path: string, cellId: string, output: string) => void;
+  outputStderr: (path: string, cellId: string, output: string) => void;
   endCellExecution: (
     path: string,
     cellId: string,

@@ -42,6 +42,18 @@ export class Rpc {
     ).then((oks) => oks.every((ok) => ok));
   }
 
+  outputStdout(path: string, cellId: string, output: string) {
+    for (const client of this.clients.values()) {
+      client.outputStdout(path, cellId, output);
+    }
+  }
+
+  outputStderr(path: string, cellId: string, output: string) {
+    for (const client of this.clients.values()) {
+      client.outputStderr(path, cellId, output);
+    }
+  }
+
   endCellExecution(path: string, cellId: string, cellOutput: CellOutput) {
     return Promise.all(
       Array.from(this.clients.values()).map((client) =>

@@ -93,14 +93,6 @@ import { foo } from "./bar.ts";
 and changes to the imported file will cause dependent cells to re-execute as
 above.
 
-## Environment variables
-
-`vitale` inherits the environment variable setup from Vite, see [Env Variables
-and Modes](https://vitejs.dev/guide/env-and-mode.html).
-
-Since code in cells is transformed by Vite, you need to prefix variables with
-`VITE_` in order for them to be visible.
-
 ## Output panes
 
 Cell output is displayed below the cell. You can open the output in a separate
@@ -192,6 +184,20 @@ document.getElementById(__vitale_cell_output_root_id__).innerText =
 
 It should be possible to render non-React frameworks this way but I haven't
 tried it.
+
+## Logging
+
+Standard output and error streams are captured when running cells and sent to a
+per-cell output channel. Press the ![output](./assets/CodiconOutput.svg) button
+in the cell status bar to view the channel.
+
+## Environment variables
+
+`vitale` inherits the environment variable setup from Vite, see [Env Variables
+and Modes](https://vitejs.dev/guide/env-and-mode.html).
+
+Since code in cells is transformed by Vite, you need to prefix variables with
+`VITE_` in order for them to be visible.
 
 ## Known issues
 

@@ -6,16 +6,18 @@ export class NotebookCellStatusBarItemProvider
   provideCellStatusBarItems(cell: vscode.NotebookCell) {
     const items: vscode.NotebookCellStatusBarItem[] = [];
 
-    const idItem = new vscode.NotebookCellStatusBarItem(
-      cell.metadata.id,
-      vscode.NotebookCellStatusBarAlignment.Right
-    );
-    idItem.command = {
-      title: "Copy to clipboard",
-      command: "vitale.copyToClipboard",
-      arguments: [cell.metadata.id],
-    };
-    items.push(idItem);
+    if (false) {
+      const idItem = new vscode.NotebookCellStatusBarItem(
+        cell.metadata.id,
+        vscode.NotebookCellStatusBarAlignment.Right
+      );
+      idItem.command = {
+        title: "Copy to clipboard",
+        command: "vitale.copyToClipboard",
+        arguments: [cell.metadata.id],
+      };
+      items.push(idItem);
+    }
 
     if (cell.metadata.dirty || cell.metadata.docDirty) {
       const dirtyItem = new vscode.NotebookCellStatusBarItem(
@@ -39,6 +41,20 @@ export class NotebookCellStatusBarItemProvider
       arguments: [cell],
     };
     items.push(pauseItem);
+
+    // TODO(jaked)
+    // it would be nice to show this only if there is any output
+    const stdoutItem = new vscode.NotebookCellStatusBarItem(
+      "$(output)",
+      vscode.NotebookCellStatusBarAlignment.Right
+    );
+    stdoutItem.tooltip = "Stdout";
+    stdoutItem.command = {
+      title: "Show stdout",
+      command: "vitale.showStdout",
+      arguments: [cell],
+    };
+    items.push(stdoutItem);
 
     return items;
   }
