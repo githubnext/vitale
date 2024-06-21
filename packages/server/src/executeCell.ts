@@ -33,6 +33,9 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
 }
 
 function mimeTaggedResultOf(result: any) {
+  if (result === undefined) {
+    return undefined;
+  }
   if (
     typeof result === "object" &&
     "data" in result &&
