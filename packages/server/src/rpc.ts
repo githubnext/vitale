@@ -54,7 +54,15 @@ export class Rpc {
     }
   }
 
-  endCellExecution(path: string, cellId: string, cellOutput: CellOutput) {
+  updateCellOutput(path: string, cellId: string, cellOutput: CellOutput) {
+    return Promise.all(
+      Array.from(this.clients.values()).map((client) =>
+        client.updateCellOutput(path, cellId, cellOutput)
+      )
+    );
+  }
+
+  endCellExecution(path: string, cellId: string, cellOutput?: CellOutput) {
     return Promise.all(
       Array.from(this.clients.values()).map((client) =>
         client.endCellExecution(path, cellId, cellOutput)

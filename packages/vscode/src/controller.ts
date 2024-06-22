@@ -140,6 +140,7 @@ export class NotebookController {
         startCellExecution: this.startCellExecution.bind(this),
         outputStdout: this.outputStdout.bind(this),
         outputStderr: this.outputStderr.bind(this),
+        updateCellOutput: this.updateCellOutput.bind(this),
         endCellExecution: this.endCellExecution.bind(this),
       },
       {
@@ -394,7 +395,7 @@ export class NotebookController {
     }
   }
 
-  private async endCellExecution(
+  private async updateCellOutput(
     path: string,
     id: string,
     cellOutput: CellOutput
@@ -403,13 +404,28 @@ export class NotebookController {
     const execution = this._executions.get(key);
     if (execution) {
       const notebookCellOutput = cellOutputToNotebookCellOutput(cellOutput);
-      await execution.clearOutput();
-      await execution.appendOutput(notebookCellOutput);
+      await execution.replaceOutput(notebookCellOutput);
+      this.cellOutputPanes.updatePane(execution.cell);
+    }
+  }
+
+  private async endCellExecution(
+    path: string,
+    id: string,
+    cellOutput?: CellOutput
+  ) {
+    const key = `${path}-${id}`;
+    const execution = this._executions.get(key);
+    if (execution) {
+      if (cellOutput) {
+        const notebookCellOutput = cellOutputToNotebookCellOutput(cellOutput);
+        await execution.clearOutput();
+        await execution.appendOutput(notebookCellOutput);
+        this.cellOutputPanes.updatePane(execution.cell);
+      }
       execution.end(true, Date.now());
       this._executions.delete(key);
-
       this.setCellDirty(execution.cell, false);
-      this.cellOutputPanes.updatePane(execution.cell);
     }
   }
 

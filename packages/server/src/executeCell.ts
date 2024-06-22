@@ -32,29 +32,6 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
   );
 }
 
-function mimeTaggedResultOf(result: any) {
-  if (result === undefined) {
-    return undefined;
-  }
-  if (
-    typeof result === "object" &&
-    "data" in result &&
-    typeof result.data === "string" &&
-    "mime" in result &&
-    typeof result.mime === "string"
-  ) {
-    return result;
-  } else if (isSVGElementLike(result)) {
-    return { mime: "image/svg+xml", data: result.outerHTML };
-  } else if (isHTMLElementLike(result)) {
-    return { mime: "text/html", data: result.outerHTML };
-  } else if (typeof result === "object") {
-    return { mime: "application/json", data: JSON.stringify(result) };
-  } else {
-    return { mime: "text/x-javascript", data: JSON.stringify(result) };
-  }
-}
-
 function rewriteStack(stack: undefined | string): undefined | string {
   if (!stack) {
     return stack;
@@ -66,6 +43,72 @@ function rewriteStack(stack: undefined | string): undefined | string {
   } else {
     return stack;
   }
+}
+
+function mimeTaggedResultOf(result: any) {
+  if (result === undefined) {
+    return undefined;
+  } else if (result instanceof Error) {
+    const obj = {
+      name: result.name,
+      message: result.message,
+      stack: rewriteStack(result.stack),
+    };
+    return {
+      data: JSON.stringify(obj, undefined, "\t"),
+      mime: "application/vnd.code.notebook.error",
+    };
+  } else if (isSVGElementLike(result)) {
+    return { mime: "image/svg+xml", data: result.outerHTML };
+  } else if (isHTMLElementLike(result)) {
+    return { mime: "text/html", data: result.outerHTML };
+  } else if (
+    typeof result === "object" &&
+    "data" in result &&
+    typeof result.data === "string" &&
+    "mime" in result &&
+    typeof result.mime === "string"
+  ) {
+    return result;
+  } else if (typeof result === "object") {
+    return { mime: "application/json", data: JSON.stringify(result) };
+  } else {
+    return { mime: "text/x-javascript", data: JSON.stringify(result) };
+  }
+}
+
+function makeCellOutput(result: any) {
+  const mimeTaggedResult = mimeTaggedResultOf(result);
+
+  const items: CellOutputItem[] = [];
+  if (mimeTaggedResult !== undefined) {
+    items.push({
+      data: [...Buffer.from(mimeTaggedResult.data, "utf8").values()],
+      mime: mimeTaggedResult.mime,
+    });
+  }
+  const cellOutput: CellOutput = { items };
+  return cellOutput;
+}
+
+async function endCellExecutionWithOutput(
+  rpc: Rpc,
+  path: string,
+  cellId: string,
+  result: any
+): Promise<boolean> {
+  const cellOutput = makeCellOutput(result);
+  await rpc.endCellExecution(path, cellId, cellOutput);
+  return true;
+}
+
+function isIterator(obj: any): obj is Iterator<any> {
+  return (
+    obj &&
+    typeof obj.next === "function" &&
+    typeof obj.return === "function" &&
+    typeof obj.throw === "function"
+  );
 }
 
 export async function executeCell(
@@ -85,72 +128,75 @@ export async function executeCell(
     return false;
   }
 
-  let mimeTaggedResult;
-  try {
-    const cell = cells.get(id);
-    if (!cell) throw new Error(`cell not found: ${id}`);
-
-    if (!cell.sourceDescription) {
-      const [_, path] = cellIdRegex.exec(id)!;
-      cell.sourceDescription = rewrite(
-        cell.code,
-        cell.language,
-        id,
-        cell.cellId,
-        cells.forPath(path)
-      );
+  const cell = cells.get(id);
+  if (!cell) {
+    try {
+      throw new Error(`cell not found: ${id}`);
+    } catch (e) {
+      return await endCellExecutionWithOutput(rpc, path, cellId, e);
     }
-
-    // client execution
-    if (cell.sourceDescription.type === "client") {
-      mimeTaggedResult = {
-        data: JSON.stringify({
-          // TODO(jaked) strip workspace root when executeCell is called
-          id: id.substring(runtime.root.length + 1),
-          origin: runtime.origin,
-        }),
-        mime: "application/x-vitale",
-      };
-    }
-
-    // server execution
-    else {
-      const domain = createDomain(
-        (chunk) => {
-          rpc.outputStdout(path, cellId, chunk.toString("utf8"));
-        },
-        (chunk) => {
-          rpc.outputStderr(path, cellId, chunk.toString("utf8"));
-        }
-      );
-      let { default: result } = await domain.run(
-        async () => await runtime.executeUrl(id)
-      );
-      if (result instanceof Promise) result = await result;
-      mimeTaggedResult = mimeTaggedResultOf(result);
-    }
-  } catch (e) {
-    const err = e as Error;
-    const obj = {
-      name: err.name,
-      message: err.message,
-      stack: rewriteStack(err.stack),
-    };
-    mimeTaggedResult = {
-      data: JSON.stringify(obj, undefined, "\t"),
-      mime: "application/vnd.code.notebook.error",
-    };
   }
 
-  const items: CellOutputItem[] = [];
-  if (mimeTaggedResult !== undefined) {
-    items.push({
-      data: [...Buffer.from(mimeTaggedResult.data, "utf8").values()],
-      mime: mimeTaggedResult.mime,
-    });
+  if (!cell.sourceDescription) {
+    const [_, path] = cellIdRegex.exec(id)!;
+    cell.sourceDescription = rewrite(
+      cell.code,
+      cell.language,
+      id,
+      cell.cellId,
+      cells.forPath(path)
+    );
   }
-  const cellOutput: CellOutput = { items };
 
-  await rpc.endCellExecution(path, cellId, cellOutput);
-  return true;
+  // client execution
+  if (cell.sourceDescription.type === "client") {
+    const result = {
+      data: JSON.stringify({
+        // TODO(jaked) strip workspace root when executeCell is called
+        id: id.substring(runtime.root.length + 1),
+        origin: runtime.origin,
+      }),
+      mime: "application/x-vitale",
+    };
+    return await endCellExecutionWithOutput(rpc, path, cellId, result);
+  }
+
+  // server execution
+  const domain = createDomain(
+    (chunk) => {
+      rpc.outputStdout(path, cellId, chunk.toString("utf8"));
+    },
+    (chunk) => {
+      rpc.outputStderr(path, cellId, chunk.toString("utf8"));
+    }
+  );
+
+  let result: any;
+  result = await domain
+    .run(async () => await runtime.executeUrl(id))
+    .then((mod) => mod.default)
+    .catch((e) => e);
+
+  if (result instanceof Promise) {
+    result = await domain.run(async () => await result).catch((e) => e);
+    return await endCellExecutionWithOutput(rpc, path, cellId, result);
+  } else if (isIterator(result)) {
+    while (true) {
+      const item = await domain
+        .run(async () => await result.next())
+        .catch((e) => e);
+      if (item instanceof Error) {
+        return await endCellExecutionWithOutput(rpc, path, cellId, item);
+      }
+      if ("value" in item) {
+        await rpc.updateCellOutput(path, cellId, makeCellOutput(item.value));
+      }
+      if (item.done) {
+        rpc.endCellExecution(path, cellId);
+        return true;
+      }
+    }
+  } else {
+    return await endCellExecutionWithOutput(rpc, path, cellId, result);
+  }
 }
