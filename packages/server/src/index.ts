@@ -4,6 +4,18 @@ export function text(data: string) {
   return { data, mime: "text/plain" };
 }
 
+export function textHtml(data: string) {
+  return { data, mime: "text/x-html" };
+}
+
+export function textJson(data: string) {
+  return { data, mime: "text/x-json" };
+}
+
+export function textMarkdown(data: string) {
+  return { data, mime: "text/x-markdown" };
+}
+
 export function stream(data: string) {
   return { data, mime: "application/x.notebook.stream" };
 }
