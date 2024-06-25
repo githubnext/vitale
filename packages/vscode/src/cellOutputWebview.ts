@@ -7,11 +7,11 @@ import { activate as activeMarkdownLanguageFeatures } from "../markdown-language
 const rendererContext = {
   workspace: { isTrusted: true },
   settings: {
-    lineLimit: 100,
+    lineLimit: 500,
     linkifyFilePaths: false,
     minimalError: false,
-    outputScrolling: false,
-    outputWordWrap: false,
+    outputScrolling: true,
+    outputWordWrap: true,
   },
   onDidChangeSettings: (_cb: any) => ({ dispose: () => {} }),
 } as any;
