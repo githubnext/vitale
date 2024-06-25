@@ -30,7 +30,11 @@ export class CellOutputPanes {
         <script src="${scriptUri}"></script>
     </head>
     <body>
-      <div id="output" />
+      <div id="container">
+        <div class="output_container">
+          <div id="output" />
+        </div>
+      </div>
     </body>
   </html>`;
   }
