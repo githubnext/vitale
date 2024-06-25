@@ -4,6 +4,10 @@ export function text(data: string) {
   return { data, mime: "text/plain" };
 }
 
+export function stream(data: string) {
+  return { data, mime: "application/x.notebook.stream" };
+}
+
 export function markdown(data: string) {
   return { data, mime: "text/markdown" };
 }
