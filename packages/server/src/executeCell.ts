@@ -188,7 +188,7 @@ export async function executeCell(
       if (item instanceof Error) {
         return await endCellExecutionWithOutput(rpc, path, cellId, item);
       }
-      if ("value" in item) {
+      if (item.value !== undefined) {
         await rpc.updateCellOutput(path, cellId, makeCellOutput(item.value));
       }
       if (item.done) {
