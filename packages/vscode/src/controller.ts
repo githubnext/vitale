@@ -192,6 +192,12 @@ export class NotebookController {
       this.rejectClient(new Error("disposed"));
       return;
     }
+    if (state === "idle") {
+      for (const execution of this._executions.values()) {
+        execution.end(undefined, Date.now());
+      }
+      this._executions.clear();
+    }
     this._state = state;
 
     switch (state) {
@@ -370,6 +376,7 @@ export class NotebookController {
     execution.start(Date.now());
 
     this._executions.set(key, execution);
+    await execution.clearOutput();
     return true;
   }
 
