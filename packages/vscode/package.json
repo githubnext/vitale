@@ -35,7 +35,7 @@
         "command": "vitale.viewCellOutputInPane",
         "category": "Vitale",
         "icon": "$(open-preview)",
-        "enablement": "notebookType == 'vitale-notebook' && notebookCellHasOutputs"
+        "enablement": "notebookType == 'vitale-notebook'"
       },
       {
         "title": "Show cell output channel",
@@ -62,7 +62,7 @@
         {
           "command": "vitale.viewCellOutputInPane",
           "group": "inline/cell@1",
-          "when": "notebookType == 'vitale-notebook' && notebookCellHasOutputs"
+          "when": "notebookType == 'vitale-notebook'"
         },
         {
           "command": "vitale.showCellOutputChannel",
