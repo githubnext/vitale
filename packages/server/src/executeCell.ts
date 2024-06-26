@@ -139,13 +139,17 @@ export async function executeCell(
 
   if (!cell.sourceDescription) {
     const [_, path] = cellIdRegex.exec(id)!;
-    cell.sourceDescription = rewrite(
-      cell.code,
-      cell.language,
-      id,
-      cell.cellId,
-      cells.forPath(path)
-    );
+    try {
+      cell.sourceDescription = rewrite(
+        cell.code,
+        cell.language,
+        id,
+        cell.cellId,
+        cells.forPath(path)
+      );
+    } catch (e) {
+      return await endCellExecutionWithOutput(rpc, path, cellId, e);
+    }
   }
 
   // client execution
