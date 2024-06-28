@@ -31,6 +31,9 @@ importers:
       '@babel/types':
         specifier: ^7.24.0
         version: 7.24.0
+      '@types/vscode':
+        specifier: ^1.90.0
+        version: 1.90.0
       birpc:
         specifier: ^0.2.17
         version: 0.2.17
@@ -996,6 +999,10 @@ packages:
   /@types/vscode@1.84.2:
     resolution: {integrity: sha512-LCe1FvCDMJKkPdLVGYhP0HRJ1PDop2gRVm/zFHiOKwYLBRS7vEV3uOOUId4HMV+L1IxqyS+IZXMmlSMRbZGIAw==}
     dev: true
+
+  /@types/vscode@1.90.0:
+    resolution: {integrity: sha512-oT+ZJL7qHS9Z8bs0+WKf/kQ27qWYR3trsXpq46YDjFqBsMLG4ygGGjPaJ2tyrH0wJzjOEmDyg9PDJBBhWg9pkQ==}
+    dev: false
 
   /@types/ws@8.5.10:
     resolution: {integrity: sha512-vmQSUcfalpIq0R9q7uTo2lXs6eGIpt9wtnLdMv9LVpIjCA/+ufZRozlVoVelIYixx1ugCBKDhn89vnsEGOCx9A==}
