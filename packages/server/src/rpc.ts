@@ -62,6 +62,51 @@ export class Rpc {
     return sessions[0];
   }
 
+  async showInformationMessage(
+    message: string,
+    options: vscode.MessageOptions,
+    ...items: vscode.MessageItem[]
+  ) {
+    // TODO(jaked)
+    // it doesn't make sense to call this for all clients
+    const res = await Promise.all(
+      Array.from(this.clients.values()).map((client) =>
+        client.showInformationMessage(message, options, ...items)
+      )
+    );
+    return res[0];
+  }
+
+  async showWarningMessage(
+    message: string,
+    options: vscode.MessageOptions,
+    ...items: vscode.MessageItem[]
+  ) {
+    // TODO(jaked)
+    // it doesn't make sense to call this for all clients
+    const res = await Promise.all(
+      Array.from(this.clients.values()).map((client) =>
+        client.showWarningMessage(message, options, ...items)
+      )
+    );
+    return res[0];
+  }
+
+  async showErrorMessage(
+    message: string,
+    options: vscode.MessageOptions,
+    ...items: vscode.MessageItem[]
+  ) {
+    // TODO(jaked)
+    // it doesn't make sense to call this for all clients
+    const res = await Promise.all(
+      Array.from(this.clients.values()).map((client) =>
+        client.showErrorMessage(message, options, ...items)
+      )
+    );
+    return res[0];
+  }
+
   markCellsDirty(cells: { path: string; cellId: string }[]) {
     if (cells.length === 0) {
       return;

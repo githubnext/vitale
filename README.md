@@ -218,6 +218,21 @@ getSession(
   options: vscode.AuthenticationGetSessionOptions
 ): Promise<vscode.AuthenticationSession>;
 
+showInformationMessage<string>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: string[]
+): Promise<string | undefined>;
+showWarningMessage<string>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: string[]
+): Promise<string | undefined>;
+showErrorMessage<string>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: string[]
+): Promise<string | undefined>;
 ```
 
 ## Development

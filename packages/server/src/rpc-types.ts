@@ -54,4 +54,7 @@ export type ClientFunctions = {
 
   // VS Code API
   getSession: typeof vscode.authentication.getSession;
+  showInformationMessage: typeof vscode.window.showInformationMessage;
+  showWarningMessage: typeof vscode.window.showWarningMessage;
+  showErrorMessage: typeof vscode.window.showErrorMessage;
 };

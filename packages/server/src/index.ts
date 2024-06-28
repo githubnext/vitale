@@ -43,6 +43,10 @@ export function jsonView(obj: object) {
   return { data: JSON.stringify(obj), mime: "application/x-json-view" };
 }
 
+// VS Code API
+
+const rpcKey = "__vitale_rpc__";
+
 export function getSession(
   providerId: string,
   scopes: readonly string[],
@@ -64,11 +68,76 @@ export function getSession(
   scopes: readonly string[],
   options?: vscode.AuthenticationGetSessionOptions
 ): Thenable<vscode.AuthenticationSession | undefined>;
-export function getSession(
-  providerId: string,
-  scopes: readonly string[],
-  options?: vscode.AuthenticationGetSessionOptions
-) {
+export function getSession() {
   // @ts-ignore
-  return global["__vitale_rpc__"].getSession(providerId, scopes, options);
+  return global[rpcKey].getSession(...arguments);
+}
+
+export function showInformationMessage<T extends string>(
+  message: string,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showInformationMessage<T extends string>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showInformationMessage<T extends vscode.MessageItem>(
+  message: string,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showInformationMessage<T extends vscode.MessageItem>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showInformationMessage() {
+  // @ts-ignore
+  return global[rpcKey].showInformationMessage(...arguments);
+}
+
+export function showWarningMessage<T extends string>(
+  message: string,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showWarningMessage<T extends string>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showWarningMessage<T extends vscode.MessageItem>(
+  message: string,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showWarningMessage<T extends vscode.MessageItem>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showWarningMessage() {
+  // @ts-ignore
+  return global[rpcKey].showWarningMessage(...arguments);
+}
+
+export function showErrorMessage<T extends string>(
+  message: string,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showErrorMessage<T extends string>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showErrorMessage<T extends vscode.MessageItem>(
+  message: string,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showErrorMessage<T extends vscode.MessageItem>(
+  message: string,
+  options: vscode.MessageOptions,
+  ...items: T[]
+): Thenable<T | undefined>;
+export function showErrorMessage() {
+  // @ts-ignore
+  return global[rpcKey].showErrorMessage(...arguments);
 }

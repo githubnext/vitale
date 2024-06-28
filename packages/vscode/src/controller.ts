@@ -145,6 +145,9 @@ export class NotebookController {
 
         // VS Code API
         getSession: vscode.authentication.getSession,
+        showInformationMessage: vscode.window.showInformationMessage,
+        showWarningMessage: vscode.window.showWarningMessage,
+        showErrorMessage: vscode.window.showErrorMessage,
       },
       {
         post: (msg) => ws.send(msg),
