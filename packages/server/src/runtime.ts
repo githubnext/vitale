@@ -1,21 +1,23 @@
-import { ESModulesRunner, ViteRuntime } from "vite/runtime";
+import { ViteRuntime } from "vite/runtime";
 import type { ViteDevServer } from "vite";
 import * as Path from "node:path";
 import { handleHMRUpdate } from "./hmr";
 import { cellIdRegex } from "./cells";
+import { Runner } from "./runner";
+import { Rpc } from "./rpc";
 
 export class Runtime {
   private viteServer: ViteDevServer;
   private viteRuntime: ViteRuntime;
 
-  constructor(viteServer: ViteDevServer) {
+  constructor(viteServer: ViteDevServer, rpc: Rpc) {
     this.viteServer = viteServer;
     this.viteRuntime = new ViteRuntime(
       {
         root: viteServer.config.root,
         fetchModule: viteServer.ssrFetchModule,
       },
-      new ESModulesRunner()
+      new Runner(rpc)
     );
   }
 

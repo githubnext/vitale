@@ -9,6 +9,7 @@ import rewrite from "./rewrite";
 import { Rpc } from "./rpc";
 import { Runtime } from "./runtime";
 import { Options } from "./types";
+import { Client } from "./client";
 
 const trailingSeparatorRE = /[?&]$/;
 const timestampRE = /\bt=\d{13}&?\b/;
@@ -149,8 +150,8 @@ class VitaleDevServer {
 
   private constructor(viteServer: ViteDevServer, cells: Cells) {
     this.viteServer = viteServer;
-    this.runtime = new Runtime(viteServer);
-    this.rpc = new Rpc(cells, this.runtime);
+    this.rpc = new Rpc();
+    this.runtime = new Runtime(viteServer, this.rpc);
 
     const wss = new WebSocketServer({ noServer: true });
 
@@ -160,7 +161,7 @@ class VitaleDevServer {
       if (pathname !== "/__vitale_api__") return;
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit("connection", ws, request);
-        this.rpc.setupClient(ws);
+        this.rpc.setupClient(ws, new Client(this.rpc, cells, this.runtime));
       });
     });
 

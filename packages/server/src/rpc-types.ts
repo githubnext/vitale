@@ -1,3 +1,5 @@
+import * as vscode from "vscode";
+
 export interface CellOutputItem {
   data: number[]; // Uint8Array
   mime: string;
@@ -49,4 +51,7 @@ export type ClientFunctions = {
     cellId: string,
     cellOutput?: CellOutput
   ) => void;
+
+  // VS Code API
+  getSession: typeof vscode.authentication.getSession;
 };

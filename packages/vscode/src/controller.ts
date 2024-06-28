@@ -142,6 +142,9 @@ export class NotebookController {
         outputStderr: this.outputStderr.bind(this),
         updateCellOutput: this.updateCellOutput.bind(this),
         endCellExecution: this.endCellExecution.bind(this),
+
+        // VS Code API
+        getSession: vscode.authentication.getSession,
       },
       {
         post: (msg) => ws.send(msg),

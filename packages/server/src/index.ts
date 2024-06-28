@@ -1,3 +1,4 @@
+import * as vscode from "vscode";
 export * from "./rpc-types";
 
 export function text(data: string) {
@@ -40,4 +41,34 @@ export function json(obj: object) {
 
 export function jsonView(obj: object) {
   return { data: JSON.stringify(obj), mime: "application/x-json-view" };
+}
+
+export function getSession(
+  providerId: string,
+  scopes: readonly string[],
+  options: vscode.AuthenticationGetSessionOptions & {
+    /** */ createIfNone: true;
+  }
+): Thenable<vscode.AuthenticationSession>;
+export function getSession(
+  providerId: string,
+  scopes: readonly string[],
+  options: vscode.AuthenticationGetSessionOptions & {
+    /** literal-type defines return type */ forceNewSession:
+      | true
+      | vscode.AuthenticationForceNewSessionOptions;
+  }
+): Thenable<vscode.AuthenticationSession>;
+export function getSession(
+  providerId: string,
+  scopes: readonly string[],
+  options?: vscode.AuthenticationGetSessionOptions
+): Thenable<vscode.AuthenticationSession | undefined>;
+export function getSession(
+  providerId: string,
+  scopes: readonly string[],
+  options?: vscode.AuthenticationGetSessionOptions
+) {
+  // @ts-ignore
+  return global["__vitale_rpc__"].getSession(providerId, scopes, options);
 }
