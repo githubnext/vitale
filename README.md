@@ -52,9 +52,11 @@ A cell can contain a single expression, or a sequence of statements where the
 last statement is an expression. (Note that an object literal in statement
 position must be wrapped in parentheses to avoid being parsed as a block.)
 
-The output of a cell is the value of the expression; if the expression is a
-promise, it will be `await`ed automatically; if there's no trailing expression
-or the expression is undefined there's no output.
+The output of a cell is the value of the expression; if there's no trailing
+expression or the value of the expression is undefined there's no output. If the
+value of the expression is a promise, it will be `await`ed automatically; if the
+value of the expression is an iterator or async iterator, it will be iterated
+and the cell output replaced with each value as it arrives.
 
 Ordinarily cells are executed server-side in a Node environment, but see below
 about client-side rendering.
@@ -122,6 +124,10 @@ MIME-tagged outputs:
 
 ```ts
 function text(data: string);
+function stream(data: string); // application/x.notebook.stream
+function textHtml(data: string); // text/x-html
+function textJson(data: string); // text/x-json
+function textMarkdown(data: string); // text/x-markdown
 function markdown(data: string);
 function html(html: string | { outerHTML: string });
 function svg(html: string | { outerHTML: string });
@@ -134,6 +140,8 @@ This package is auto-imported under the name `Vitale` in notebook cells, so you 
 ```ts
 Vitale.jsonView({ foo: "bar" });
 ```
+
+but you may want to import it explicitly to get types for auto-complete.
 
 You can construct `HTMLElement` and `SVGElement` values using `jsdom` or a
 similar library; for example, to render an SVG from [Observable
@@ -199,19 +207,25 @@ and Modes](https://vitejs.dev/guide/env-and-mode.html).
 Since code in cells is transformed by Vite, you need to prefix variables with
 `VITE_` in order for them to be visible.
 
-## Known issues
+## VS Code API
 
-- cancelling an execution only cancels it client-side; if you get your server
-  stuck you can restart it with `Vitale: Restart Kernel`
-- rerunning a React cell doesn't hot reload; the component is remounted and
-  loses its state
+You can call some of the VS Code API from cells using functions in `@githubnext/vitale`:
+
+```ts
+getSession(
+  providerId: string,
+  scopes: readonly string[],
+  options: vscode.AuthenticationGetSessionOptions
+): Promise<vscode.AuthenticationSession>;
+
+```
 
 ## Development
 
 To develop Vitale:
 
 - `git clone https://github.com/githubnext/vitale.git`
-- `cd vitale; pnpm install; pnpm -r run watch`
+- `cd vitale; pnpm install`
 - open the project in VS Code, press `F5` to run
 
 The server needs to be installed in whatever project you're testing with. You
