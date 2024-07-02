@@ -2,10 +2,10 @@
   "name": "vitale-vscode",
   "displayName": "Vitale",
   "description": "",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.85.2"
+    "vscode": "^1.90.2"
   },
   "categories": [
     "Other"
@@ -127,7 +127,7 @@
     "@types/node": "18.x",
     "@types/react": "^18.2.73",
     "@types/react-dom": "^18.2.23",
-    "@types/vscode": "1.84.2",
+    "@types/vscode": "1.90.0",
     "@types/vscode-notebook-renderer": "^1.72.3",
     "@types/vscode-webview": "^1.57.5",
     "@types/ws": "^8.5.10",
