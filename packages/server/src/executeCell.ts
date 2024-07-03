@@ -37,9 +37,11 @@ function rewriteStack(stack: undefined | string): undefined | string {
     return stack;
   }
 
-  const i = stack.indexOf("\n    at ESModulesRunner.runViteModule");
+  const i = stack.indexOf("Runner.runViteModule");
   if (i !== -1) {
-    return stack.substring(0, i);
+    const stack2 = stack.substring(0, i);
+    const i2 = stack2.lastIndexOf("\n", i);
+    return stack2.substring(0, i2);
   } else {
     return stack;
   }
