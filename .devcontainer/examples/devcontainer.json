@@ -1,7 +1,7 @@
 {
   "name": "Examples",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
-  "workspaceFolder": "packages/examples",
+  "workspaceFolder": "/workspaces/vitale/packages/examples",
   "customizations": {
     "vscode": {
       "extensions": []
