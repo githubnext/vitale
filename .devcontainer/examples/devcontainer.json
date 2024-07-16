@@ -1,0 +1,17 @@
+{
+  "name": "Examples",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
+  "workspaceFolder": "packages/examples",
+  "customizations": {
+    "vscode": {
+      "extensions": []
+    }
+  },
+  "postCreateCommand": "pnpm install",
+  "portsAttributes": {
+    "51205": {
+      "label": "Vitale",
+      "onAutoForward": "notify"
+    }
+  }
+}
