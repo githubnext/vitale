@@ -1,0 +1,13 @@
+diff --git a/dist/esm/utils.js b/dist/esm/utils.js
+index 2cae8ed236d1f0f5e1b64c6c5316d9eece11502f..6d78b5ee79f7f46042e07d74166cf3204856e842 100644
+--- a/dist/esm/utils.js
++++ b/dist/esm/utils.js
+@@ -51,7 +51,7 @@ export function ensureAsyncIterable(stream) {
+     else {
+         return {
+             cancel: async () => {
+-                stream.socket.end();
++                stream.socket?.end(); // socket can be null after body is consumed
+             },
+             iterable: stream,
+         };

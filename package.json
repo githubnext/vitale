@@ -4,7 +4,8 @@
   },
   "pnpm": {
     "patchedDependencies": {
-      "vite@5.2.6": "patches/vite@5.2.6.patch"
+      "vite@5.2.6": "patches/vite@5.2.6.patch",
+      "@azure/core-sse@2.1.2": "patches/@azure__core-sse@2.1.2.patch"
     }
   },
   "devDependencies": {

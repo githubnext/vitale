@@ -11,7 +11,7 @@
       "request": "launch",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/packages/vscode",
-        "${workspaceFolder}/../../react-ts-example"
+        "${workspaceFolder}/packages/examples"
       ],
       "outFiles": ["${workspaceFolder}/packages/vscode/dist/**/*.js"],
       "preLaunchTask": "${defaultBuildTask}"
