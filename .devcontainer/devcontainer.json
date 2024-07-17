@@ -7,9 +7,9 @@
       "extensions": []
     }
   },
-  "postCreateCommand": "pnpm install && pnpm add npm:@githubnext/vitale && node ./scripts/fetch_latest_vsix.mjs && unzip -o latest-vsix.zip && code --install-extension ./vitale-*.vsix",
-  "postStartCommand": "echo $PATH > PATH.postStartCommand",
-  "postAttachCommand": "echo $PATH > PATH.postAttachCommand",
+  "postCreateCommand": "pnpm install && pnpm add npm:@githubnext/vitale && node ./scripts/fetch_latest_vsix.mjs && unzip -o latest-vsix.zip",
+  "waitFor": "postCreateCommand",
+  "postAttachCommand": " code --install-extension ./vitale-*.vsix",
   "portsAttributes": {
     "51205": {
       "label": "Vitale",
