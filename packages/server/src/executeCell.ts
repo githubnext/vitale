@@ -57,6 +57,8 @@ function rewriteStack(stack: undefined | string): undefined | string {
 function mimeTaggedResultOf(result: any) {
   if (result === undefined) {
     return undefined;
+  } else if (result === null) {
+    return { mime: "text/x-javascript", data: "null" };
   } else if (result instanceof Error) {
     const obj = {
       name: result.name,
@@ -90,7 +92,7 @@ function makeCellOutput(result: any) {
   const mimeTaggedResult = mimeTaggedResultOf(result);
 
   const items: CellOutputItem[] = [];
-  if (mimeTaggedResult !== undefined) {
+  if (mimeTaggedResult) {
     items.push({
       data: [...Buffer.from(mimeTaggedResult.data, "utf8").values()],
       mime: mimeTaggedResult.mime,
