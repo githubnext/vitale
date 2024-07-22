@@ -34,7 +34,7 @@ export class Client {
       path: string;
       cellId: string;
       language: string;
-      code?: string;
+      code: string;
     }[],
     force: boolean,
     executeDirtyCells: boolean
@@ -44,9 +44,7 @@ export class Client {
     for (const { path, cellId, language, code } of cells) {
       const ext = extOfLanguage(language);
       const id = `${path}-cellId=${cellId}.${ext}`;
-      if (code) {
-        this.cells.set(id, { cellId, code, language });
-      }
+      this.cells.set(id, { cellId, code, language });
 
       this.runtime.invalidateServerModule(id);
       this.runtime.handleHMRUpdate(id);

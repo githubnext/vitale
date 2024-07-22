@@ -25,7 +25,7 @@ export type ServerFunctions = {
       path: string;
       cellId: string;
       language: string;
-      code?: string;
+      code: string;
     }[],
     force: boolean,
     executeDirtyCells: boolean
