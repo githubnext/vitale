@@ -32,19 +32,26 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
   );
 }
 
+// TODO(jaked)
+// I don't really understand how async stack traces work
+// but I've seen all of these as the top internal stack frame
+// before the cell code
+const stackFrameRegex = /^\s+at (Domain|Runner|executeCell)/;
+
 function rewriteStack(stack: undefined | string): undefined | string {
   if (!stack) {
     return stack;
   }
 
-  const i = stack.indexOf("Runner.runViteModule");
-  if (i !== -1) {
-    const stack2 = stack.substring(0, i);
-    const i2 = stack2.lastIndexOf("\n", i);
-    return stack2.substring(0, i2);
-  } else {
-    return stack;
+  const lines = stack.split("\n");
+  const rewrittenLines = [];
+  for (const line of lines) {
+    if (stackFrameRegex.test(line)) {
+      break;
+    }
+    rewrittenLines.push(line);
   }
+  return rewrittenLines.join("\n");
 }
 
 function mimeTaggedResultOf(result: any) {
