@@ -1,11 +1,13 @@
 import type { NotebookEditorSelectionChangeEvent } from "vscode";
 import { getRerunCellsWhenDirty } from "./controller";
 import type { NotebookController } from "./controller";
+import { log } from "./log";
 
 export function makeHandleDidChangeNotebookEditorSelection(
   controller: NotebookController
 ) {
   return (e: NotebookEditorSelectionChangeEvent) => {
+    log.info("selection changed");
     // what we really want here is to run when an edited cell loses focus
     // but it doesn't seem to be possible in the VS Code API
     // so instead we run when the notebook selection changes
@@ -18,6 +20,7 @@ export function makeHandleDidChangeNotebookEditorSelection(
     // TODO(jaked) ugh
     setTimeout(() => {
       if (getRerunCellsWhenDirty()) {
+        // don't force paused cells, user didn't explicitly request execution
         controller.runDirty(e.notebookEditor.notebook.uri.toString(), false);
       }
     }, 100);

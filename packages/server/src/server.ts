@@ -175,9 +175,9 @@ class VitaleDevServer {
   }
 
   private invalidateModuleAndDirty(id: string) {
-    const cells: { path: string; cellId: string; ext: string }[] = [];
-    this.runtime.invalidateRuntimeModule(id, cells);
-    this.rpc.markCellsDirty(cells);
+    const dirtyCells: { path: string; cellId: string; ext: string }[] = [];
+    this.runtime.invalidateRuntimeModule(id, dirtyCells);
+    this.rpc.markCellsDirty(dirtyCells);
   }
 
   listen() {

@@ -349,6 +349,7 @@ export class NotebookController {
       notebookCells.map((cell) => this.setCellDirty(cell, true))
     );
     if (getRerunCellsWhenDirty()) {
+      // don't force paused cells, user didn't request execution
       this.executeCells(notebookCells, false);
     }
   }
@@ -443,6 +444,7 @@ export class NotebookController {
   }
 
   private executeHandler(notebookCells: vscode.NotebookCell[]) {
+    // force paused cells, user explictly requested execution
     this.executeCells(notebookCells, true);
   }
 
@@ -453,16 +455,18 @@ export class NotebookController {
     if (notebookCells.length === 0) {
       return;
     }
-    const cells = notebookCells.map((cell) => ({
-      path: cell.notebook.uri.fsPath,
-      cellId: cell.metadata.id,
-      language: cell.document.languageId,
-      code: cell.document.getText(),
-    }));
-
     await Promise.all(
       notebookCells.map((cell) => this.setCellDocDirty(cell, false))
     );
+
+    const cells = notebookCells
+      .filter((cell) => !cell.metadata.paused || force)
+      .map((cell) => ({
+        path: cell.notebook.uri.fsPath,
+        cellId: cell.metadata.id,
+        language: cell.document.languageId,
+        code: cell.document.getText(),
+      }));
 
     const client = await this.getClient();
     client.executeCells(cells, force, getRerunCellsWhenDirty());

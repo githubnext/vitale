@@ -27,6 +27,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "vitale.runDirty",
       (ctx: { notebookEditor: { notebookUri: string } }) => {
+        // force paused cells, user explicitly requested execution
         controller.runDirty(ctx.notebookEditor.notebookUri, true);
       }
     ),
