@@ -7,7 +7,6 @@ export function makeHandleDidChangeNotebookEditorSelection(
   controller: NotebookController
 ) {
   return (e: NotebookEditorSelectionChangeEvent) => {
-    log.info("selection changed");
     // what we really want here is to run when an edited cell loses focus
     // but it doesn't seem to be possible in the VS Code API
     // so instead we run when the notebook selection changes
