@@ -4,7 +4,7 @@
   "license": "MIT",
   "type": "module",
   "devDependencies": {
-    "@githubnext/vitale": "0.0.16",
+    "@githubnext/vitale": "workspace:../server",
     "@types/node": "~20.14.9",
     "@types/react": "^18.2.73",
     "@types/react-dom": "^18.2.23",
