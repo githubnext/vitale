@@ -6,29 +6,28 @@ import * as fs from "node:fs";
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-const runs = await octokit.request(
-  "GET /repos/{owner}/{repo}/actions/workflows/{workflow_id}/runs",
+const release = await octokit.request(
+  "GET /repos/{owner}/{repo}/releases/latest",
   {
     owner: "githubnext",
     repo: "vitale",
-    workflow_id: "vsix.yml",
-    per_page: 1,
   }
 );
 
-const artifacts = await octokit.request(
-  "GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts",
+const assets = await octokit.request(
+  "GET /repos/{owner}/{repo}/releases/{release_id}/assets",
   {
     owner: "githubnext",
     repo: "vitale",
-    run_id: runs.data.workflow_runs[0].id,
+    release_id: release.data.id,
   }
 );
+const asset = assets.data[0];
 
-const res = await fetch(artifacts.data.artifacts[0].archive_download_url, {
+const res = await fetch(asset.browser_download_url, {
   headers: {
     Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
   },
 });
 
-Readable.fromWeb(res.body).pipe(fs.createWriteStream("latest-vsix.zip"));
+Readable.fromWeb(res.body).pipe(fs.createWriteStream(asset.name));
