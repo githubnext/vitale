@@ -31,9 +31,11 @@ jobs:
         run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Build
+        working-directory: packages/server
         run: pnpm build
 
       - name: Publish to NPM
+        working-directory: packages/server
         run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
