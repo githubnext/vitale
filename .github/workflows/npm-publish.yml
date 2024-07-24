@@ -34,8 +34,12 @@ jobs:
         working-directory: packages/server
         run: pnpm build
 
+      # see https://github.com/pnpm/pnpm/issues/3141#issuecomment-1305563972
+      - name: Set publishing config
+        run: pnpm config set '//registry.npmjs.org/:_authToken' "${NPM_TOKEN}"
+        env:
+          NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+
       - name: Publish to NPM
         working-directory: packages/server
         run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
