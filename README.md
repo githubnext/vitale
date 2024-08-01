@@ -14,12 +14,11 @@ standard `vite` plugins.
 
 ## Installation
 
-1.  Install the `.vsix` from the latest build:
+1.  Install the `.vsix` from the latest release:
 
-    - go to https://github.com/githubnext/vitale/actions/workflows/vsix.yml
-    - click on the latest run
-    - scroll to the bottom and download the `vscode-extension` artifact
-    - unpack `vscode-extension.zip`
+    - go to https://github.com/githubnext/vitale/releases
+    - look for the latest release (at the top)
+    - download the `vitale-vscode-[version].vsix` file
     - run `code --install-extension vitale-vscode-[version].vsix` (or run
       `Extensions: Install from VSIX...` from the command palette)
 
