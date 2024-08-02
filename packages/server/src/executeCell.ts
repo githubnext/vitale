@@ -36,7 +36,7 @@ function isHTMLElementLike(obj: unknown): obj is PossibleHTML {
 // I don't really understand how async stack traces work
 // but I've seen all of these as the top internal stack frame
 // before the cell code
-const stackFrameRegex = /^\s+at (Domain|Runner|executeCell)/;
+const stackFrameRegex = /^\s+at (Domain|Runner|executeCell|mimeTaggedResultOf)/;
 
 function rewriteStack(stack: undefined | string): undefined | string {
   if (!stack) {
@@ -82,7 +82,11 @@ function mimeTaggedResultOf(result: any) {
   ) {
     return result;
   } else if (typeof result === "object") {
-    return { mime: "application/json", data: JSON.stringify(result) };
+    try {
+      return { mime: "application/json", data: JSON.stringify(result) };
+    } catch (e) {
+      return mimeTaggedResultOf(e);
+    }
   } else {
     return { mime: "text/x-javascript", data: JSON.stringify(result) };
   }
