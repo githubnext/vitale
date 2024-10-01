@@ -62,6 +62,7 @@ export class NotebookController {
   private _port: undefined | number;
   private _process: undefined | ChildProcess;
   private _websocket: undefined | WebSocket;
+  private _timeout: undefined | NodeJS.Timeout;
   private _client: undefined | Client;
   private _clientWaiters: {
     resolve: (client: Client) => void;
@@ -185,11 +186,14 @@ export class NotebookController {
         return;
       }
       log.info(`ws close`);
-      setTimeout(() => {
-        if (this._state === "connecting" || this._state === "connected") {
-          this.run("started");
-        }
-      }, RECONNECT_INTERVAL);
+      if (!this._timeout) {
+        this._timeout = setTimeout(() => {
+          this._timeout = undefined;
+          if (this._state === "connecting" || this._state === "connected") {
+            this.run("started");
+          }
+        }, RECONNECT_INTERVAL);
+      }
     });
   }
 
