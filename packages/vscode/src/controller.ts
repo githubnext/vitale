@@ -13,6 +13,11 @@ import kill from "tree-kill";
 import getPort from "get-port";
 import { log } from "./log";
 import { CellOutputPanes } from "./cellOutputPanes";
+import { platform } from 'os';
+
+const isWindows = platform() === 'win32';
+const isLinux = platform() === 'linux';
+
 
 function cellOutputToNotebookCellOutput(cellOutput: CellOutput) {
   return new vscode.NotebookCellOutput(
@@ -102,17 +107,28 @@ export class NotebookController {
   }
 
   private async start() {
+    let command: string;
+    if (isWindows) {
+      command = 'node_modules/.bin/vitale.cmd';
+    } else if (isLinux) {
+      command = 'node_modules/.bin/vitale';
+    } else {
+      command = 'node_modules/.bin/vitale.ps1';
+    }
+    
     const process = spawn(
-      "node_modules/.bin/vitale",
+      command,
       ["--port", String(this._port)],
       {
         cwd: this._cwd,
+        shell: true, // Ensure the correct script is invoked
         // env: {
         //   ...process.env,
         //   DEBUG: "vite:*",
         // },
       }
     );
+
     process.stdout?.on("data", (data) => {
       log.info(data.toString());
     });
