@@ -143,7 +143,7 @@
     "get-port": "^7.1.0",
     "json5": "^2.2.3",
     "markdown-it": "^14.1.0",
-    "nanoid": "^5.0.6",
+    "nanoid": "^5.0.9",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tree-kill": "^1.2.2",
